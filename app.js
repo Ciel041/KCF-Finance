@@ -712,6 +712,25 @@ document.querySelectorAll('input[name="bud-period-type"]').forEach(radio => {
 // FORM SUBMISSIONS
 // ═══════════════════════════════════════════════════
 
+// Helper to extract clear error messages even from non-JSON responses (404/500/timeouts)
+async function getErrorMessage(res, defaultMsg) {
+    try {
+        const text = await res.text();
+        try {
+            const data = JSON.parse(text);
+            return data.error || data.message || defaultMsg;
+        } catch {
+            return text && text.length < 150 && !text.includes('<!DOCTYPE') ? text : `${defaultMsg} (${res.status} ${res.statusText || 'Error'})`;
+        }
+    } catch {
+        return `${defaultMsg} (${res.status} ${res.statusText || 'Error'})`;
+    }
+}
+
+// ═══════════════════════════════════════════════════
+// FORM SUBMISSIONS
+// ═══════════════════════════════════════════════════
+
 // Organisation form (supports both Add and Edit)
 document.getElementById('org-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -734,7 +753,7 @@ document.getElementById('org-form').addEventListener('submit', async (e) => {
             const res = await fetch(`${API_URL}/organisations?id=${editId}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
             });
-            if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
+            if (!res.ok) throw new Error(await getErrorMessage(res, 'Update failed'));
             showToast('success', 'Organisation Updated', `"${body.name}" has been updated.`);
             cancelEditOrg();
         } else {
@@ -742,7 +761,7 @@ document.getElementById('org-form').addEventListener('submit', async (e) => {
             const res = await fetch(`${API_URL}/organisations`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
             });
-            if (!res.ok) throw new Error((await res.json()).error || 'Creation failed');
+            if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to create organisation'));
             const created = await res.json();
             e.target.reset();
             document.getElementById('org-edit-id').value = '';
@@ -759,7 +778,7 @@ document.getElementById('org-form').addEventListener('submit', async (e) => {
         await loadOrganizations();
         if (currentOrgId) onGlobalOrgChange();
     } catch (err) {
-        showToast('danger', 'Error', editId ? 'Failed to update organisation.' : 'Failed to create organisation.');
+        showToast('danger', 'Error', err.message || (editId ? 'Failed to update organisation.' : 'Failed to create organisation.'));
     }
 });
 
@@ -776,12 +795,12 @@ document.getElementById('cat-form').addEventListener('submit', async (e) => {
         const res = await fetch(`${API_URL}/categories`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         });
-        if (!res.ok) throw new Error((await res.json()).error || 'Failed to add category');
+        if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to add category'));
         document.getElementById('cat-name').value = '';
         showToast('success', 'Category Added', `"${body.cat_name}" category created.`);
         await loadCategoriesForOrg(orgId);
     } catch (err) {
-        showToast('danger', 'Error', 'Failed to add category.');
+        showToast('danger', 'Error', err.message || 'Failed to add category.');
     }
 });
 
@@ -800,14 +819,17 @@ document.getElementById('expense-form').addEventListener('submit', async (e) => 
         const res = await fetch(`${API_URL}/expenses`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         });
+        
+        if (!res.ok) {
+            throw new Error(await getErrorMessage(res, 'Failed to record expense'));
+        }
+
         const data = await res.json();
 
         if (data.blocked) {
             showToast('danger', 'Expense Blocked!', data.message, 8000);
             return;
         }
-
-        if (!res.ok) throw new Error(data.error || 'Failed to record expense');
 
         if (data.warning) {
             showToast('warning', 'Budget Warning', data.warning, 6000);
@@ -824,7 +846,7 @@ document.getElementById('expense-form').addEventListener('submit', async (e) => 
             updateBudgetIndicator();
         }
     } catch (err) {
-        showToast('danger', 'Error', 'Failed to record expense. Please try again.');
+        showToast('danger', 'Error', err.message || 'Failed to record expense. Please try again.');
     }
 });
 
@@ -844,7 +866,7 @@ document.getElementById('income-form').addEventListener('submit', async (e) => {
         const res = await fetch(`${API_URL}/income`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         });
-        if (!res.ok) throw new Error((await res.json()).error || 'Failed to record income');
+        if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to record income'));
 
         // Reset form inputs
         document.getElementById('inc-source').value = '';
@@ -857,7 +879,7 @@ document.getElementById('income-form').addEventListener('submit', async (e) => {
             loadDashboard();
         }
     } catch (err) {
-        showToast('danger', 'Error', 'Failed to record income.');
+        showToast('danger', 'Error', err.message || 'Failed to record income.');
     }
 });
 
@@ -891,7 +913,7 @@ document.getElementById('budget-form').addEventListener('submit', async (e) => {
         const res = await fetch(`${API_URL}/budgets`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         });
-        if (!res.ok) throw new Error((await res.json()).error || 'Failed to create budget');
+        if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to create budget'));
 
         document.getElementById('bud-amount').value = '';
         document.getElementById('period-monthly').checked = true;
@@ -902,7 +924,7 @@ document.getElementById('budget-form').addEventListener('submit', async (e) => {
             updateBudgetIndicator();
         }
     } catch (err) {
-        showToast('danger', 'Error', 'Failed to create budget.');
+        showToast('danger', 'Error', err.message || 'Failed to create budget.');
     }
 });
 

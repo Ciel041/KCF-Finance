@@ -9,29 +9,27 @@ export function getClientPromise() {
         throw new Error('CRITICAL: MONGODB_URI environment variable is not set. Please configure it in your Vercel dashboard or .env.local file.');
     }
 
-    if (process.env.NODE_ENV === 'development' || !process.env.VERCEL) {
-        if (!global._mongoClientPromise) {
-            client = new MongoClient(currentUri);
-            global._mongoClientPromise = client.connect();
-        }
-        return global._mongoClientPromise;
-    } else {
-        if (!clientPromise) {
-            client = new MongoClient(currentUri);
-            clientPromise = client.connect();
-        }
-        return clientPromise;
+    if (!global._mongoClientPromise) {
+        client = new MongoClient(currentUri, {
+            serverSelectionTimeoutMS: 8000,
+            connectTimeoutMS: 8000
+        });
+        global._mongoClientPromise = client.connect().catch(err => {
+            global._mongoClientPromise = null;
+            throw err;
+        });
     }
+    return global._mongoClientPromise;
 }
 
 /**
  * Returns the MongoDB Db instance.
  * Automatically selects the database configured in MONGODB_URI (e.g. /expense_manager)
- * or defaults to 'expense_manager'.
+ * or defaults to 'expense_manager' to avoid falling into MongoDB's default 'test' database.
  */
 export async function getDb() {
     const connectedClient = await getClientPromise();
-    return connectedClient.db();
+    return connectedClient.db(process.env.MONGODB_DB || 'expense_manager');
 }
 
 /**
