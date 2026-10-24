@@ -1,4 +1,4 @@
-import { getDb } from '../../lib/mongodb.js';
+import { getDb } from '../../lib/sqlite.js';
 import { getDateRangeForPeriod } from '../../lib/budget-helpers.js';
 
 export default async function handler(req, res) {
@@ -14,68 +14,37 @@ export default async function handler(req, res) {
     }
 
     try {
-        const db = await getDb();
+        const db = getDb();
         const numOrgId = Number(org_id);
         const numCatId = Number(cat_id);
 
-        const allBudgets = await db.collection('budgets').aggregate([
-            {
-                $match: {
-                    org_id: numOrgId,
-                    cat_id: numCatId
-                }
-            },
-            {
-                $lookup: {
-                    from: 'organisations',
-                    localField: 'org_id',
-                    foreignField: 'org_id',
-                    as: 'org'
-                }
-            },
-            {
-                $lookup: {
-                    from: 'categories',
-                    localField: 'cat_id',
-                    foreignField: 'cat_id',
-                    as: 'cat'
-                }
-            },
-            {
-                $project: {
-                    _id: 1,
-                    bud_id: 1,
-                    org_id: 1,
-                    cat_id: 1,
-                    amount: 1,
-                    period: 1,
-                    org_name: { $ifNull: [{ $arrayElemAt: ['$org.name', 0] }, ''] },
-                    cat_name: { $ifNull: [{ $arrayElemAt: ['$cat.cat_name', 0] }, ''] }
-                }
-            }
-        ]).toArray();
+        const allBudgets = db.prepare(`
+            SELECT 
+                b.bud_id,
+                b.org_id,
+                b.cat_id,
+                b.amount,
+                b.period,
+                COALESCE(o.name, '') AS org_name,
+                COALESCE(c.cat_name, '') AS cat_name
+            FROM budgets b
+            LEFT JOIN organisations o ON b.org_id = o.org_id
+            LEFT JOIN categories c ON b.cat_id = c.cat_id
+            WHERE b.org_id = ? AND b.cat_id = ?
+        `).all(numOrgId, numCatId);
+
+        const expStmt = db.prepare(`
+            SELECT COALESCE(SUM(amount), 0) AS total_spent
+            FROM expenses
+            WHERE org_id = ? AND cat_id = ? AND e_date >= ? AND e_date <= ?
+        `);
 
         const matches = [];
         for (const budget of allBudgets) {
             const range = getDateRangeForPeriod(budget.period);
             if (date >= range.start && date <= range.end) {
-                const expAgg = await db.collection('expenses').aggregate([
-                    {
-                        $match: {
-                            org_id: numOrgId,
-                            cat_id: numCatId,
-                            e_date: { $gte: range.start, $lte: range.end }
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: null,
-                            total_spent: { $sum: '$amount' }
-                        }
-                    }
-                ]).toArray();
-
-                const spent = expAgg.length > 0 ? Number(expAgg[0].total_spent) : 0;
+                const expRow = expStmt.get(numOrgId, numCatId, range.start, range.end);
+                const spent = expRow ? Number(expRow.total_spent) : 0;
                 matches.push({
                     bud_id: budget.bud_id,
                     period: budget.period,

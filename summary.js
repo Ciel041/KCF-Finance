@@ -1,4 +1,4 @@
-import { getDb } from '../../lib/mongodb.js';
+import { getDb } from '../../lib/sqlite.js';
 import { getDateRangeForPeriod } from '../../lib/budget-helpers.js';
 
 export default async function handler(req, res) {
@@ -14,42 +14,30 @@ export default async function handler(req, res) {
     }
 
     try {
-        const db = await getDb();
+        const db = getDb();
         const numOrgId = Number(org_id);
         const numCatId = Number(cat_id);
 
-        const filter = {
-            org_id: numOrgId,
-            cat_id: numCatId
-        };
+        let sql = 'SELECT * FROM budgets WHERE org_id = ? AND cat_id = ?';
+        let budgets;
         if (period) {
-            filter.period = String(period).trim();
+            sql += ' AND period = ? ORDER BY period DESC, bud_id DESC';
+            budgets = db.prepare(sql).all(numOrgId, numCatId, String(period).trim());
+        } else {
+            sql += ' ORDER BY period DESC, bud_id DESC';
+            budgets = db.prepare(sql).all(numOrgId, numCatId);
         }
 
-        const budgets = await db.collection('budgets')
-            .find(filter)
-            .sort({ period: -1, bud_id: -1 })
-            .toArray();
+        const expStmt = db.prepare(`
+            SELECT COALESCE(SUM(amount), 0) AS total_spent
+            FROM expenses
+            WHERE org_id = ? AND cat_id = ? AND e_date >= ? AND e_date <= ?
+        `);
 
-        const results = await Promise.all(budgets.map(async (budget) => {
+        const results = budgets.map(budget => {
             const range = getDateRangeForPeriod(budget.period);
-            const expAgg = await db.collection('expenses').aggregate([
-                {
-                    $match: {
-                        org_id: numOrgId,
-                        cat_id: numCatId,
-                        e_date: { $gte: range.start, $lte: range.end }
-                    }
-                },
-                {
-                    $group: {
-                        _id: null,
-                        total_spent: { $sum: '$amount' }
-                    }
-                }
-            ]).toArray();
-
-            const actual_spent = expAgg.length > 0 ? Number(expAgg[0].total_spent) : 0;
+            const expRow = expStmt.get(numOrgId, numCatId, range.start, range.end);
+            const actual_spent = expRow ? Number(expRow.total_spent) : 0;
             return {
                 bud_id: budget.bud_id,
                 period: budget.period,
@@ -57,7 +45,7 @@ export default async function handler(req, res) {
                 actual_spent,
                 remaining_balance: Number(budget.amount) - actual_spent
             };
-        }));
+        });
 
         return res.status(200).json(results);
     } catch (err) {

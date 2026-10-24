@@ -1,17 +1,14 @@
-import { getDb, getNextSequence } from '../lib/mongodb.js';
+import { getDb } from '../lib/sqlite.js';
 
 export default async function handler(req, res) {
     const { method } = req;
     const { id } = req.query;
 
     try {
-        const db = await getDb();
+        const db = getDb();
 
         if (method === 'GET') {
-            const rows = await db.collection('budgets')
-                .find({})
-                .sort({ bud_id: 1 })
-                .toArray();
+            const rows = db.prepare('SELECT * FROM budgets ORDER BY bud_id ASC').all();
             return res.status(200).json(rows);
         }
 
@@ -24,44 +21,62 @@ export default async function handler(req, res) {
             }
             if (!period) return res.status(400).json({ error: 'Budget period is required' });
 
-            const bud_id = await getNextSequence('bud_id');
+            const now = new Date().toISOString();
+            const result = db.prepare(`
+                INSERT INTO budgets (org_id, cat_id, amount, period, createdAt)
+                VALUES (?, ?, ?, ?, ?)
+            `).run(
+                Number(bodyOrgId),
+                Number(cat_id),
+                parseFloat(amount),
+                String(period).trim(),
+                now
+            );
+
+            const bud_id = Number(result.lastInsertRowid);
             const doc = {
+                id: bud_id,
                 bud_id,
                 org_id: Number(bodyOrgId),
                 cat_id: Number(cat_id),
                 amount: parseFloat(amount),
                 period: String(period).trim(),
-                createdAt: new Date()
+                createdAt: now
             };
 
-            await db.collection('budgets').insertOne(doc);
-            return res.status(200).json({ id: bud_id, ...doc });
+            return res.status(200).json(doc);
         }
 
         if (method === 'PUT') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const { org_id: bodyOrgId, cat_id, amount, period } = req.body;
             const numId = Number(id);
+            const now = new Date().toISOString();
 
-            await db.collection('budgets').updateOne(
-                { bud_id: numId },
-                {
-                    $set: {
-                        org_id: Number(bodyOrgId),
-                        cat_id: Number(cat_id),
-                        amount: parseFloat(amount),
-                        period: String(period).trim(),
-                        updatedAt: new Date()
-                    }
-                }
+            db.prepare(`
+                UPDATE budgets
+                SET org_id = ?,
+                    cat_id = ?,
+                    amount = ?,
+                    period = ?,
+                    updatedAt = ?
+                WHERE bud_id = ?
+            `).run(
+                Number(bodyOrgId),
+                Number(cat_id),
+                parseFloat(amount),
+                String(period).trim(),
+                now,
+                numId
             );
+
             return res.status(200).json({ message: 'Updated successfully' });
         }
 
         if (method === 'DELETE') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const numId = Number(id);
-            await db.collection('budgets').deleteOne({ bud_id: numId });
+            db.prepare('DELETE FROM budgets WHERE bud_id = ?').run(numId);
             return res.status(200).json({ message: 'Deleted successfully' });
         }
 

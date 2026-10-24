@@ -1,45 +1,34 @@
-import { getDb, getNextSequence } from '../lib/mongodb.js';
+import { getDb } from '../lib/sqlite.js';
 
 export default async function handler(req, res) {
     const { method } = req;
     const { id, org_id } = req.query;
 
     try {
-        const db = await getDb();
+        const db = getDb();
 
         if (method === 'GET') {
-            const pipeline = [];
+            let sql = `
+                SELECT 
+                    i.income_id,
+                    i.org_id,
+                    i.Source,
+                    i.amount,
+                    i.income_date,
+                    i.description,
+                    COALESCE(o.name, '') AS org_name
+                FROM income i
+                LEFT JOIN organisations o ON i.org_id = o.org_id
+            `;
+            let rows;
             if (org_id) {
-                pipeline.push({ $match: { org_id: Number(org_id) } });
+                sql += ' WHERE i.org_id = ? ORDER BY i.income_date DESC, i.income_id DESC';
+                rows = db.prepare(sql).all(Number(org_id));
+            } else {
+                sql += ' ORDER BY i.income_date DESC, i.income_id DESC';
+                rows = db.prepare(sql).all();
             }
 
-            pipeline.push(
-                {
-                    $lookup: {
-                        from: 'organisations',
-                        localField: 'org_id',
-                        foreignField: 'org_id',
-                        as: 'org'
-                    }
-                },
-                {
-                    $project: {
-                        _id: 1,
-                        income_id: 1,
-                        org_id: 1,
-                        Source: 1,
-                        amount: 1,
-                        income_date: 1,
-                        description: 1,
-                        org_name: { $ifNull: [{ $arrayElemAt: ['$org.name', 0] }, ''] }
-                    }
-                },
-                {
-                    $sort: { income_date: -1, income_id: -1 }
-                }
-            );
-
-            const rows = await db.collection('income').aggregate(pipeline).toArray();
             return res.status(200).json(rows);
         }
 
@@ -52,46 +41,66 @@ export default async function handler(req, res) {
             }
             if (!income_date) return res.status(400).json({ error: 'Date is required' });
 
-            const income_id = await getNextSequence('income_id');
+            const now = new Date().toISOString();
+            const result = db.prepare(`
+                INSERT INTO income (org_id, Source, amount, income_date, description, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(
+                Number(bodyOrgId),
+                Source.trim(),
+                parseFloat(amount),
+                income_date,
+                description ? description.trim() : '',
+                now
+            );
+
+            const income_id = Number(result.lastInsertRowid);
             const doc = {
+                id: income_id,
                 income_id,
                 org_id: Number(bodyOrgId),
                 Source: Source.trim(),
                 amount: parseFloat(amount),
                 income_date,
                 description: description ? description.trim() : '',
-                createdAt: new Date()
+                createdAt: now
             };
 
-            await db.collection('income').insertOne(doc);
-            return res.status(200).json({ id: income_id, ...doc });
+            return res.status(200).json(doc);
         }
 
         if (method === 'PUT') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const { org_id: bodyOrgId, Source, amount, income_date, description } = req.body;
             const numId = Number(id);
+            const now = new Date().toISOString();
 
-            await db.collection('income').updateOne(
-                { income_id: numId },
-                {
-                    $set: {
-                        org_id: Number(bodyOrgId),
-                        Source: Source ? Source.trim() : undefined,
-                        amount: parseFloat(amount),
-                        income_date,
-                        description: description ? description.trim() : '',
-                        updatedAt: new Date()
-                    }
-                }
+            db.prepare(`
+                UPDATE income
+                SET org_id = ?,
+                    Source = COALESCE(?, Source),
+                    amount = ?,
+                    income_date = ?,
+                    description = ?,
+                    updatedAt = ?
+                WHERE income_id = ?
+            `).run(
+                Number(bodyOrgId),
+                Source ? Source.trim() : null,
+                parseFloat(amount),
+                income_date,
+                description ? description.trim() : '',
+                now,
+                numId
             );
+
             return res.status(200).json({ message: 'Updated successfully' });
         }
 
         if (method === 'DELETE') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const numId = Number(id);
-            await db.collection('income').deleteOne({ income_id: numId });
+            db.prepare('DELETE FROM income WHERE income_id = ?').run(numId);
             return res.status(200).json({ message: 'Deleted successfully' });
         }
 

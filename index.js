@@ -1,4 +1,4 @@
-import { getDb } from '../../lib/mongodb.js';
+import { getDb } from '../../lib/sqlite.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'GET') {
@@ -13,49 +13,40 @@ export default async function handler(req, res) {
     }
 
     try {
-        const db = await getDb();
+        const db = getDb();
         const numOrgId = Number(org_id);
 
-        const incomeAgg = await db.collection('income').aggregate([
-            { $match: { org_id: numOrgId } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
-        ]).toArray();
+        const incRow = db.prepare(`
+            SELECT COALESCE(SUM(amount), 0) AS total
+            FROM income
+            WHERE org_id = ?
+        `).get(numOrgId);
 
-        const expenseAgg = await db.collection('expenses').aggregate([
-            { $match: { org_id: numOrgId } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
-        ]).toArray();
+        const expRow = db.prepare(`
+            SELECT COALESCE(SUM(amount), 0) AS total
+            FROM expenses
+            WHERE org_id = ?
+        `).get(numOrgId);
 
-        const expensesByCategory = await db.collection('expenses').aggregate([
-            { $match: { org_id: numOrgId } },
-            {
-                $group: {
-                    _id: '$cat_id',
-                    amount: { $sum: '$amount' }
-                }
-            },
-            {
-                $lookup: {
-                    from: 'categories',
-                    localField: '_id',
-                    foreignField: 'cat_id',
-                    as: 'cat'
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    cat_id: '$_id',
-                    cat_name: { $ifNull: [{ $arrayElemAt: ['$cat.cat_name', 0] }, 'Uncategorized'] },
-                    amount: 1
-                }
-            }
-        ]).toArray();
+        const expensesByCategory = db.prepare(`
+            SELECT 
+                e.cat_id,
+                COALESCE(c.cat_name, 'Uncategorized') AS cat_name,
+                SUM(e.amount) AS amount
+            FROM expenses e
+            LEFT JOIN categories c ON e.cat_id = c.cat_id
+            WHERE e.org_id = ?
+            GROUP BY e.cat_id
+        `).all(numOrgId);
 
         return res.status(200).json({
-            totalIncome: incomeAgg.length > 0 ? Number(incomeAgg[0].total) : 0,
-            totalExpense: expenseAgg.length > 0 ? Number(expenseAgg[0].total) : 0,
-            expensesByCategory
+            totalIncome: incRow ? Number(incRow.total) : 0,
+            totalExpense: expRow ? Number(expRow.total) : 0,
+            expensesByCategory: expensesByCategory.map(row => ({
+                cat_id: row.cat_id,
+                cat_name: row.cat_name,
+                amount: Number(row.amount)
+            }))
         });
     } catch (err) {
         console.error('API Error in dashboard/index:', err);

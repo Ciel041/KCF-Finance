@@ -61,19 +61,17 @@ app.all('/api/budgets', (req, res) => budgetsHandler(req, res));
 app.all('/api/dashboard', (req, res) => dashboardHandler(req, res));
 app.all('/api/init-db', (req, res) => initDbHandler(req, res));
 
-// Auto-initialize MongoDB indexes on startup if MONGODB_URI is provided
-if (process.env.MONGODB_URI) {
+// Auto-initialize local SQLite database on startup
+try {
     const mockReq = { method: 'POST' };
     const mockRes = {
         status: () => mockRes,
-        json: (data) => console.log('✓ MongoDB Atlas initialized:', data.message),
+        json: (data) => console.log('✓', data.message),
         setHeader: () => {}
     };
-    initDbHandler(mockReq, mockRes).catch(err => {
-        console.warn('Note: Could not auto-initialize MongoDB on startup:', err.message);
-    });
-} else {
-    console.warn('⚠️ MONGODB_URI is not set. Add it to .env.local for local development.');
+    initDbHandler(mockReq, mockRes);
+} catch (err) {
+    console.warn('Note: Could not auto-initialize database on startup:', err.message);
 }
 
 app.listen(PORT, () => {

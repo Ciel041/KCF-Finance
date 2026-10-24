@@ -1,17 +1,14 @@
-import { getDb, getNextSequence } from '../lib/mongodb.js';
+import { getDb } from '../lib/sqlite.js';
 
 export default async function handler(req, res) {
     const { method } = req;
     const { id } = req.query;
 
     try {
-        const db = await getDb();
+        const db = getDb();
 
         if (method === 'GET') {
-            const rows = await db.collection('organisations')
-                .find({})
-                .sort({ org_id: 1 })
-                .toArray();
+            const rows = db.prepare('SELECT * FROM organisations ORDER BY org_id ASC').all();
             return res.status(200).json(rows);
         }
 
@@ -21,37 +18,55 @@ export default async function handler(req, res) {
                 return res.status(400).json({ error: 'Organisation name is required' });
             }
 
-            const org_id = await getNextSequence('org_id');
+            const now = new Date().toISOString();
+            const result = db.prepare(`
+                INSERT INTO organisations (name, type, address, Contact, createdAt)
+                VALUES (?, ?, ?, ?, ?)
+            `).run(
+                name.trim(),
+                type || 'Standard',
+                address ? address.trim() : '',
+                Contact ? Contact.trim() : '',
+                now
+            );
+
+            const org_id = Number(result.lastInsertRowid);
             const doc = {
+                id: org_id,
                 org_id,
                 name: name.trim(),
                 type: type || 'Standard',
                 address: address ? address.trim() : '',
                 Contact: Contact ? Contact.trim() : '',
-                createdAt: new Date()
+                createdAt: now
             };
 
-            await db.collection('organisations').insertOne(doc);
-            return res.status(200).json({ id: org_id, ...doc });
+            return res.status(200).json(doc);
         }
 
         if (method === 'PUT') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const { name, type, address, Contact } = req.body;
             const numId = Number(id);
+            const now = new Date().toISOString();
 
-            await db.collection('organisations').updateOne(
-                { org_id: numId },
-                {
-                    $set: {
-                        name: name ? name.trim() : undefined,
-                        type,
-                        address: address ? address.trim() : '',
-                        Contact: Contact ? Contact.trim() : '',
-                        updatedAt: new Date()
-                    }
-                }
+            db.prepare(`
+                UPDATE organisations
+                SET name = COALESCE(?, name),
+                    type = COALESCE(?, type),
+                    address = ?,
+                    Contact = ?,
+                    updatedAt = ?
+                WHERE org_id = ?
+            `).run(
+                name ? name.trim() : null,
+                type || null,
+                address ? address.trim() : '',
+                Contact ? Contact.trim() : '',
+                now,
+                numId
             );
+
             return res.status(200).json({ message: 'Updated successfully' });
         }
 
@@ -59,12 +74,12 @@ export default async function handler(req, res) {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const numId = Number(id);
 
-            // Cascade delete all related child collections
-            await db.collection('expenses').deleteMany({ org_id: numId });
-            await db.collection('income').deleteMany({ org_id: numId });
-            await db.collection('budgets').deleteMany({ org_id: numId });
-            await db.collection('categories').deleteMany({ org_id: numId });
-            await db.collection('organisations').deleteOne({ org_id: numId });
+            // Delete child records and organisation
+            db.prepare('DELETE FROM expenses WHERE org_id = ?').run(numId);
+            db.prepare('DELETE FROM income WHERE org_id = ?').run(numId);
+            db.prepare('DELETE FROM budgets WHERE org_id = ?').run(numId);
+            db.prepare('DELETE FROM categories WHERE org_id = ?').run(numId);
+            db.prepare('DELETE FROM organisations WHERE org_id = ?').run(numId);
 
             return res.status(200).json({ message: 'Deleted successfully' });
         }

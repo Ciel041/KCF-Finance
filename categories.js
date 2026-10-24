@@ -1,17 +1,14 @@
-import { getDb, getNextSequence } from '../lib/mongodb.js';
+import { getDb } from '../lib/sqlite.js';
 
 export default async function handler(req, res) {
     const { method } = req;
     const { id } = req.query;
 
     try {
-        const db = await getDb();
+        const db = getDb();
 
         if (method === 'GET') {
-            const rows = await db.collection('categories')
-                .find({})
-                .sort({ cat_id: 1 })
-                .toArray();
+            const rows = db.prepare('SELECT * FROM categories ORDER BY cat_id ASC').all();
             return res.status(200).json(rows);
         }
 
@@ -20,17 +17,28 @@ export default async function handler(req, res) {
             if (!org_id) return res.status(400).json({ error: 'Organisation ID is required' });
             if (!cat_name || !cat_name.trim()) return res.status(400).json({ error: 'Category name is required' });
 
-            const cat_id = await getNextSequence('cat_id');
+            const now = new Date().toISOString();
+            const result = db.prepare(`
+                INSERT INTO categories (org_id, cat_name, description, createdAt)
+                VALUES (?, ?, ?, ?)
+            `).run(
+                Number(org_id),
+                cat_name.trim(),
+                description ? description.trim() : '',
+                now
+            );
+
+            const cat_id = Number(result.lastInsertRowid);
             const doc = {
+                id: cat_id,
                 cat_id,
                 org_id: Number(org_id),
                 cat_name: cat_name.trim(),
                 description: description ? description.trim() : '',
-                createdAt: new Date()
+                createdAt: now
             };
 
-            await db.collection('categories').insertOne(doc);
-            return res.status(200).json({ id: cat_id, ...doc });
+            return res.status(200).json(doc);
         }
 
         if (method === 'PUT') {
@@ -39,17 +47,23 @@ export default async function handler(req, res) {
             if (!cat_name || !cat_name.trim()) return res.status(400).json({ error: 'Category name is required' });
 
             const numId = Number(id);
-            await db.collection('categories').updateOne(
-                { cat_id: numId },
-                {
-                    $set: {
-                        org_id: Number(org_id),
-                        cat_name: cat_name.trim(),
-                        description: description ? description.trim() : '',
-                        updatedAt: new Date()
-                    }
-                }
+            const now = new Date().toISOString();
+
+            db.prepare(`
+                UPDATE categories
+                SET org_id = ?,
+                    cat_name = ?,
+                    description = ?,
+                    updatedAt = ?
+                WHERE cat_id = ?
+            `).run(
+                Number(org_id),
+                cat_name.trim(),
+                description ? description.trim() : '',
+                now,
+                numId
             );
+
             return res.status(200).json({ message: 'Updated successfully' });
         }
 
@@ -57,10 +71,9 @@ export default async function handler(req, res) {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const numId = Number(id);
 
-            // Cascade delete child records
-            await db.collection('expenses').deleteMany({ cat_id: numId });
-            await db.collection('budgets').deleteMany({ cat_id: numId });
-            await db.collection('categories').deleteOne({ cat_id: numId });
+            db.prepare('DELETE FROM expenses WHERE cat_id = ?').run(numId);
+            db.prepare('DELETE FROM budgets WHERE cat_id = ?').run(numId);
+            db.prepare('DELETE FROM categories WHERE cat_id = ?').run(numId);
 
             return res.status(200).json({ message: 'Deleted successfully' });
         }

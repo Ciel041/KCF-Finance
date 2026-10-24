@@ -1,4 +1,4 @@
-import { getDb } from './mongodb.js';
+import { getDb } from './sqlite.js';
 
 /**
  * Resolves a budget period string into start/end date strings.
@@ -50,20 +50,20 @@ export function getDateRangeForPeriod(period) {
 }
 
 /**
- * Budget Enforcement — check ALL applicable budgets BEFORE allowing an expense in MongoDB.
+ * Budget Enforcement — check ALL applicable budgets BEFORE allowing an expense in SQLite.
  */
 export async function checkBudgetBeforeExpense(org_id, cat_id, e_date, newAmount) {
     try {
-        const db = await getDb();
+        const db = getDb();
         const numOrgId = Number(org_id);
         const numCatId = Number(cat_id);
 
-        const allBudgets = await db.collection('budgets').find({
-            org_id: numOrgId,
-            cat_id: numCatId
-        }).toArray();
+        const allBudgets = db.prepare(`
+            SELECT * FROM budgets
+            WHERE org_id = ? AND cat_id = ?
+        `).all(numOrgId, numCatId);
 
-        if (allBudgets.length === 0) {
+        if (!allBudgets || allBudgets.length === 0) {
             return { blocked: false };
         }
 
@@ -74,23 +74,13 @@ export async function checkBudgetBeforeExpense(org_id, cat_id, e_date, newAmount
                 continue;
             }
 
-            const expAgg = await db.collection('expenses').aggregate([
-                {
-                    $match: {
-                        org_id: numOrgId,
-                        cat_id: numCatId,
-                        e_date: { $gte: range.start, $lte: range.end }
-                    }
-                },
-                {
-                    $group: {
-                        _id: null,
-                        total: { $sum: '$amount' }
-                    }
-                }
-            ]).toArray();
+            const expRow = db.prepare(`
+                SELECT COALESCE(SUM(amount), 0) AS total
+                FROM expenses
+                WHERE org_id = ? AND cat_id = ? AND e_date >= ? AND e_date <= ?
+            `).get(numOrgId, numCatId, range.start, range.end);
 
-            const alreadySpent = expAgg.length > 0 ? Number(expAgg[0].total) : 0;
+            const alreadySpent = expRow ? Number(expRow.total) : 0;
             const remaining = Number(budget.amount) - alreadySpent;
 
             if (alreadySpent + newAmount > Number(budget.amount)) {
@@ -114,7 +104,7 @@ export async function checkBudgetBeforeExpense(org_id, cat_id, e_date, newAmount
 
         return { blocked: false };
     } catch (err) {
-        console.error('Error checking budget in MongoDB:', err);
+        console.error('Error checking budget in SQLite:', err);
         return { blocked: false };
     }
 }

@@ -1,4 +1,4 @@
-import { getDb } from '../../lib/mongodb.js';
+import { getDb } from '../../lib/sqlite.js';
 import { getDateRangeForPeriod } from '../../lib/budget-helpers.js';
 
 export default async function handler(req, res) {
@@ -10,75 +10,46 @@ export default async function handler(req, res) {
     const { org_id } = req.query;
 
     try {
-        const db = await getDb();
-        const pipeline = [];
+        const db = getDb();
 
+        let sql = `
+            SELECT 
+                b.bud_id,
+                b.org_id,
+                b.cat_id,
+                b.amount AS budget_amount,
+                b.period,
+                COALESCE(o.name, '') AS org_name,
+                COALESCE(c.cat_name, '') AS cat_name
+            FROM budgets b
+            LEFT JOIN organisations o ON b.org_id = o.org_id
+            LEFT JOIN categories c ON b.cat_id = c.cat_id
+        `;
+        let budgets;
         if (org_id) {
-            pipeline.push({ $match: { org_id: Number(org_id) } });
+            sql += ' WHERE b.org_id = ? ORDER BY b.period DESC, b.bud_id DESC';
+            budgets = db.prepare(sql).all(Number(org_id));
+        } else {
+            sql += ' ORDER BY b.period DESC, b.bud_id DESC';
+            budgets = db.prepare(sql).all();
         }
 
-        pipeline.push(
-            {
-                $lookup: {
-                    from: 'organisations',
-                    localField: 'org_id',
-                    foreignField: 'org_id',
-                    as: 'org'
-                }
-            },
-            {
-                $lookup: {
-                    from: 'categories',
-                    localField: 'cat_id',
-                    foreignField: 'cat_id',
-                    as: 'cat'
-                }
-            },
-            {
-                $project: {
-                    _id: 1,
-                    bud_id: 1,
-                    org_id: 1,
-                    cat_id: 1,
-                    budget_amount: '$amount',
-                    period: 1,
-                    org_name: { $ifNull: [{ $arrayElemAt: ['$org.name', 0] }, ''] },
-                    cat_name: { $ifNull: [{ $arrayElemAt: ['$cat.cat_name', 0] }, ''] }
-                }
-            },
-            {
-                $sort: { period: -1, bud_id: -1 }
-            }
-        );
+        const expStmt = db.prepare(`
+            SELECT COALESCE(SUM(amount), 0) AS total_spent
+            FROM expenses
+            WHERE org_id = ? AND cat_id = ? AND e_date >= ? AND e_date <= ?
+        `);
 
-        const budgets = await db.collection('budgets').aggregate(pipeline).toArray();
-
-        // For each budget, calculate actual spent using the correct date range
-        const results = await Promise.all(budgets.map(async (budget) => {
+        const results = budgets.map(budget => {
             const range = getDateRangeForPeriod(budget.period);
-            const expAgg = await db.collection('expenses').aggregate([
-                {
-                    $match: {
-                        org_id: Number(budget.org_id),
-                        cat_id: Number(budget.cat_id),
-                        e_date: { $gte: range.start, $lte: range.end }
-                    }
-                },
-                {
-                    $group: {
-                        _id: null,
-                        total_spent: { $sum: '$amount' }
-                    }
-                }
-            ]).toArray();
-
-            const spent = expAgg.length > 0 ? Number(expAgg[0].total_spent) : 0;
+            const expRow = expStmt.get(Number(budget.org_id), Number(budget.cat_id), range.start, range.end);
+            const spent = expRow ? Number(expRow.total_spent) : 0;
             return {
                 ...budget,
                 spent,
                 remaining: Number(budget.budget_amount) - spent
             };
-        }));
+        });
 
         return res.status(200).json(results);
     } catch (err) {

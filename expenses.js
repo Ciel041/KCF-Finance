@@ -1,4 +1,4 @@
-import { getDb, getNextSequence } from '../lib/mongodb.js';
+import { getDb } from '../lib/sqlite.js';
 import { checkBudgetBeforeExpense } from '../lib/budget-helpers.js';
 
 export default async function handler(req, res) {
@@ -6,49 +6,31 @@ export default async function handler(req, res) {
     const { id, org_id } = req.query;
 
     try {
-        const db = await getDb();
+        const db = getDb();
 
         if (method === 'GET') {
-            const pipeline = [];
+            let sql = `
+                SELECT 
+                    e.exp_id,
+                    e.org_id,
+                    e.cat_id,
+                    e.amount,
+                    e.e_date,
+                    COALESCE(o.name, '') AS org_name,
+                    COALESCE(c.cat_name, '') AS cat_name
+                FROM expenses e
+                LEFT JOIN organisations o ON e.org_id = o.org_id
+                LEFT JOIN categories c ON e.cat_id = c.cat_id
+            `;
+            let rows;
             if (org_id) {
-                pipeline.push({ $match: { org_id: Number(org_id) } });
+                sql += ' WHERE e.org_id = ? ORDER BY e.e_date DESC, e.exp_id DESC';
+                rows = db.prepare(sql).all(Number(org_id));
+            } else {
+                sql += ' ORDER BY e.e_date DESC, e.exp_id DESC';
+                rows = db.prepare(sql).all();
             }
 
-            pipeline.push(
-                {
-                    $lookup: {
-                        from: 'organisations',
-                        localField: 'org_id',
-                        foreignField: 'org_id',
-                        as: 'org'
-                    }
-                },
-                {
-                    $lookup: {
-                        from: 'categories',
-                        localField: 'cat_id',
-                        foreignField: 'cat_id',
-                        as: 'cat'
-                    }
-                },
-                {
-                    $project: {
-                        _id: 1,
-                        exp_id: 1,
-                        org_id: 1,
-                        cat_id: 1,
-                        amount: 1,
-                        e_date: 1,
-                        org_name: { $ifNull: [{ $arrayElemAt: ['$org.name', 0] }, ''] },
-                        cat_name: { $ifNull: [{ $arrayElemAt: ['$cat.cat_name', 0] }, ''] }
-                    }
-                },
-                {
-                    $sort: { e_date: -1, exp_id: -1 }
-                }
-            );
-
-            const rows = await db.collection('expenses').aggregate(pipeline).toArray();
             return res.status(200).json(rows);
         }
 
@@ -79,44 +61,63 @@ export default async function handler(req, res) {
                 });
             }
 
-            const exp_id = await getNextSequence('exp_id');
+            const now = new Date().toISOString();
+            const result = db.prepare(`
+                INSERT INTO expenses (org_id, cat_id, amount, e_date, createdAt)
+                VALUES (?, ?, ?, ?, ?)
+            `).run(
+                numOrgId,
+                numCatId,
+                expenseAmount,
+                e_date,
+                now
+            );
+
+            const exp_id = Number(result.lastInsertRowid);
             const doc = {
+                id: exp_id,
                 exp_id,
                 org_id: numOrgId,
                 cat_id: numCatId,
                 amount: expenseAmount,
                 e_date,
-                createdAt: new Date()
+                createdAt: now,
+                warning: budgetCheck.warning || null
             };
 
-            await db.collection('expenses').insertOne(doc);
-            return res.status(200).json({ id: exp_id, ...doc, warning: budgetCheck.warning || null });
+            return res.status(200).json(doc);
         }
 
         if (method === 'PUT') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const { org_id: bodyOrgId, cat_id, amount, e_date } = req.body;
             const numId = Number(id);
+            const now = new Date().toISOString();
 
-            await db.collection('expenses').updateOne(
-                { exp_id: numId },
-                {
-                    $set: {
-                        org_id: Number(bodyOrgId),
-                        cat_id: Number(cat_id),
-                        amount: parseFloat(amount),
-                        e_date,
-                        updatedAt: new Date()
-                    }
-                }
+            db.prepare(`
+                UPDATE expenses
+                SET org_id = ?,
+                    cat_id = ?,
+                    amount = ?,
+                    e_date = ?,
+                    updatedAt = ?
+                WHERE exp_id = ?
+            `).run(
+                Number(bodyOrgId),
+                Number(cat_id),
+                parseFloat(amount),
+                e_date,
+                now,
+                numId
             );
+
             return res.status(200).json({ message: 'Updated successfully' });
         }
 
         if (method === 'DELETE') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const numId = Number(id);
-            await db.collection('expenses').deleteOne({ exp_id: numId });
+            db.prepare('DELETE FROM expenses WHERE exp_id = ?').run(numId);
             return res.status(200).json({ message: 'Deleted successfully' });
         }
 
