@@ -1,0 +1,16 @@
+{
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/budgets/progress", "destination": "/api/budgets/progress" },
+    { "source": "/api/budgets/live-check", "destination": "/api/budgets/live-check" },
+    { "source": "/api/budgets/summary", "destination": "/api/budgets/summary" },
+    { "source": "/api/budgets", "destination": "/api/budgets" },
+    { "source": "/api/organisations", "destination": "/api/organisations" },
+    { "source": "/api/categories", "destination": "/api/categories" },
+    { "source": "/api/expenses", "destination": "/api/expenses" },
+    { "source": "/api/income", "destination": "/api/income" },
+    { "source": "/api/dashboard", "destination": "/api/dashboard/index" },
+    { "source": "/api/init-db", "destination": "/api/init-db" }
+  ]
+}

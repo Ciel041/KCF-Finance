@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="KCF Finance — Expense & Budget Manager for Donation-based Institutions">
+    <title>KCF Finance — Budget Manager</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <rect width="32" height="32" rx="8" fill="url(#logo-grad)"/>
+                        <path d="M9 16L14 21L23 11" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <defs><linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#818cf8"/><stop offset="1" stop-color="#c084fc"/></linearGradient></defs>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h2>KCF Finance</h2>
+                    <p>Budget Manager</p>
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-target="dashboard-view">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span>Dashboard</span>
+                </li>
+                <li data-target="org-view">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    <span>Organisations</span>
+                </li>
+                <li data-target="expense-view">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span>Expenses</span>
+                </li>
+                <li data-target="income-view">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    <span>Income</span>
+                </li>
+                <li data-target="budget-view">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    <span>Budgets</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="sidebar-footer-badge">v1.0</div>
+                <span>KCF Finance</span>
+            </div>
+        </nav>
+
+        <!-- Mobile Header -->
+        <div class="mobile-header" id="mobile-header">
+            <button class="hamburger" id="hamburger-btn" aria-label="Toggle Navigation">
+                <span></span><span></span><span></span>
+            </button>
+            <h2>KCF Finance</h2>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header>
+                <div class="header-left">
+                    <h1 id="page-title">Dashboard</h1>
+                    <p class="header-subtitle" id="page-subtitle">Overview of your financial data</p>
+                </div>
+                <div class="header-right">
+                    <select id="global-org-select" aria-label="Select Organization">
+                        <option value="">Select Organization</option>
+                    </select>
+                </div>
+            </header>
+
+            <!-- Toast Notifications Container -->
+            <div id="toast-container"></div>
+
+            <div id="alert-container"></div>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- DASHBOARD VIEW -->
+            <!-- ═══════════════════════════════════════ -->
+            <section id="dashboard-view" class="view active-view">
+                <div class="select-org-prompt" id="dashboard-no-org">
+                    <div class="prompt-icon-wrapper">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    </div>
+                    <h3>No Organisation Selected</h3>
+                    <p>Please select an organisation from the top header to view financial analytics, income, expenses, and category breakdowns.</p>
+                </div>
+                <div id="dashboard-content" style="display: none;">
+                    <div class="summary-cards">
+                        <div class="card income-card">
+                            <div class="card-icon income-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                            </div>
+                            <h3>Total Income</h3>
+                            <p id="total-income">$0.00</p>
+                        </div>
+                        <div class="card expense-card">
+                            <div class="card-icon expense-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                            </div>
+                            <h3>Total Expenses</h3>
+                            <p id="total-expense">$0.00</p>
+                        </div>
+                        <div class="card balance-card">
+                            <div class="card-icon balance-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <h3>Net Balance</h3>
+                            <p id="net-balance">$0.00</p>
+                        </div>
+                    </div>
+
+                    <div class="charts-container">
+                        <div class="chart-wrapper">
+                            <h3>Expenses by Category</h3>
+                            <canvas id="expenseChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- ORGANISATIONS VIEW -->
+            <!-- ═══════════════════════════════════════ -->
+            <section id="org-view" class="view">
+                <div class="form-card">
+                    <h2 id="org-form-title">Add Organisation</h2>
+                    <form id="org-form">
+                        <input type="hidden" id="org-edit-id" value="">
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="org-name">Name</label>
+                                <input type="text" id="org-name" placeholder="Organisation name" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="org-type">Type</label>
+                                <select id="org-type">
+                                    <option>Orphanage</option>
+                                    <option>Church</option>
+                                    <option>NGO</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="org-address">Address</label>
+                                <input type="text" id="org-address" placeholder="Full address">
+                            </div>
+                            <div class="input-group">
+                                <label for="org-contact">Contact</label>
+                                <input type="text" id="org-contact" placeholder="Phone or email">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                            <button type="submit" class="btn primary" id="org-submit-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Add Organisation
+                            </button>
+                            <button type="button" class="btn secondary" id="org-cancel-btn" style="display: none;" onclick="cancelEditOrg()">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+
+
+                <div class="table-container mt-4" id="org-table-container">
+                    <div class="table-header-row">
+                        <h2>All Organisations</h2>
+                        <span class="badge" id="org-badge">0 organisations</span>
+                    </div>
+                    <table id="org-table">
+                        <thead>
+                            <tr><th>ID</th><th>Name</th><th>Type</th><th>Address</th><th>Contact</th><th>Action</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- EXPENSES VIEW -->
+            <!-- ═══════════════════════════════════════ -->
+            <section id="expense-view" class="view">
+                <div class="select-org-prompt" id="expense-no-org">
+                    <div class="prompt-icon-wrapper">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <h3>No Organisation Selected</h3>
+                    <p>Choose an organisation from the dropdown at the top-right to record and track expenditures.</p>
+                </div>
+
+                <div id="expense-content" style="display: none;">
+                    <div class="form-card">
+                        <h2>Record Expense</h2>
+                        <form id="expense-form">
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label for="exp-org-select">Organization</label>
+                                    <select id="exp-org-select" required></select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="exp-cat-select">Category</label>
+                                    <select id="exp-cat-select" required></select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="exp-amount">Amount</label>
+                                    <input type="number" step="0.01" id="exp-amount" placeholder="0.00" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="exp-date">Date</label>
+                                    <input type="date" id="exp-date" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn primary" id="exp-submit-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Add Expense
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Live Budget Indicator -->
+                    <div class="budget-indicator" id="budget-indicator" style="display: none;">
+                        <div class="budget-indicator-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                            <span id="budget-indicator-title">Budget Status</span>
+                        </div>
+                        <div id="budget-indicator-content"></div>
+                    </div>
+
+                    <div class="form-card mt-4">
+                        <h2>Add Category</h2>
+                        <form id="cat-form">
+                            <div class="form-grid form-grid-half">
+                                <div class="input-group">
+                                    <label for="cat-org-select">Organization</label>
+                                    <select id="cat-org-select" required></select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="cat-name">Category Name</label>
+                                    <input type="text" id="cat-name" placeholder="e.g. Food, Utilities" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn secondary" id="cat-submit-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Add Category
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Recorded Expenses Table -->
+                    <div class="table-container mt-4">
+                        <div class="table-header-row">
+                            <h2>Recorded Expenses</h2>
+                            <span class="badge" id="expense-count-badge">0 expenses</span>
+                        </div>
+                        <table id="expense-table">
+                            <thead>
+                                <tr><th>Date</th><th>Category</th><th>Amount</th><th>Action</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- INCOME VIEW -->
+            <!-- ═══════════════════════════════════════ -->
+            <section id="income-view" class="view">
+                <div class="select-org-prompt" id="income-no-org">
+                    <div class="prompt-icon-wrapper">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
+                    <h3>No Organisation Selected</h3>
+                    <p>Choose an organisation from the dropdown at the top-right to record and track revenue.</p>
+                </div>
+
+                <div id="income-content" style="display: none;">
+                    <div class="form-card">
+                        <h2>Record Income</h2>
+                        <form id="income-form">
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label for="inc-org-select">Organization</label>
+                                    <select id="inc-org-select" required></select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="inc-source">Source</label>
+                                    <input type="text" id="inc-source" placeholder="e.g. Donation, Grant" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="inc-amount">Amount</label>
+                                    <input type="number" step="0.01" id="inc-amount" placeholder="0.00" required>
+                                </div>
+                                <div class="input-group">
+                                    <label for="inc-date">Date</label>
+                                    <input type="date" id="inc-date" required>
+                                </div>
+                            </div>
+                            <div class="input-group" style="margin-top: 0;">
+                                <label for="inc-desc">Description</label>
+                                <input type="text" id="inc-desc" placeholder="Optional description">
+                            </div>
+                            <button type="submit" class="btn primary" id="inc-submit-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Add Income
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Recorded Income Table -->
+                    <div class="table-container mt-4">
+                        <div class="table-header-row">
+                            <h2>Recorded Income</h2>
+                            <span class="badge" id="income-count-badge">0 entries</span>
+                        </div>
+                        <table id="income-table">
+                            <thead>
+                                <tr><th>Date</th><th>Source</th><th>Description</th><th>Amount</th><th>Action</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- BUDGETS VIEW — Full Module -->
+            <!-- ═══════════════════════════════════════ -->
+            <section id="budget-view" class="view">
+                <div class="select-org-prompt" id="budget-no-org">
+                    <div class="prompt-icon-wrapper">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    </div>
+                    <h3>No Organisation Selected</h3>
+                    <p>Choose an organisation from the dropdown at the top-right to view budgets, spending progress, and allocations.</p>
+                </div>
+
+                <div id="budget-content" style="display: none;">
+                    <!-- Budget Summary Stats -->
+                    <div class="budget-stats" id="budget-stats">
+                        <div class="budget-stat-card">
+                            <div class="stat-icon stat-icon-total">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Budgets</span>
+                                <span class="stat-value" id="stat-total-budgets">0</span>
+                            </div>
+                        </div>
+                        <div class="budget-stat-card">
+                            <div class="stat-icon stat-icon-allocated">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8l-4 4-4-4"/></svg>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Allocated</span>
+                                <span class="stat-value" id="stat-total-allocated">$0</span>
+                            </div>
+                        </div>
+                        <div class="budget-stat-card">
+                            <div class="stat-icon stat-icon-spent">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 010 7H6"/></svg>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Spent</span>
+                                <span class="stat-value" id="stat-total-spent">$0</span>
+                            </div>
+                        </div>
+                        <div class="budget-stat-card">
+                            <div class="stat-icon stat-icon-alert">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Over Budget</span>
+                                <span class="stat-value stat-value-danger" id="stat-over-budget">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Budget Creation Form -->
+                    <div class="form-card budget-form-card">
+                        <div class="form-card-header">
+                            <h2>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Create New Budget
+                            </h2>
+                            <p>Allocate funds to a category for a specific period</p>
+                        </div>
+                        <form id="budget-form">
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label for="bud-org-select">Organization</label>
+                                    <select id="bud-org-select" required>
+                                        <option value="">Select organization…</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bud-cat-select">Category</label>
+                                    <select id="bud-cat-select" required>
+                                        <option value="">Select category…</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bud-amount">Budget Amount ($)</label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">$</span>
+                                        <input type="number" step="0.01" min="0" id="bud-amount" placeholder="0.00" required>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="bud-period">Period</label>
+                                    <div class="period-selector">
+                                        <input type="radio" name="bud-period-type" id="period-monthly" value="monthly" checked>
+                                        <label for="period-monthly" class="period-chip">Monthly</label>
+                                        <input type="radio" name="bud-period-type" id="period-quarterly" value="quarterly">
+                                        <label for="period-quarterly" class="period-chip">Quarterly</label>
+                                        <input type="radio" name="bud-period-type" id="period-yearly" value="yearly">
+                                        <label for="period-yearly" class="period-chip">Yearly</label>
+                                    </div>
+                                    <input type="month" id="bud-period" required style="margin-top: 0.6rem;">
+                                    <p class="period-hint" id="period-hint">💡 Monthly budgets only track expenses dated within the selected month.</p>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn primary btn-lg" id="bud-submit-btn">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Create Budget
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Budget Filter Bar -->
+                    <div class="budget-filter-bar">
+                        <h2 class="budget-section-title">Active Budgets</h2>
+                        <div class="budget-filters">
+                            <select id="budget-filter-status" aria-label="Filter by status">
+                                <option value="">All Statuses</option>
+                                <option value="on-track">On Track</option>
+                                <option value="warning">Warning</option>
+                                <option value="over-budget">Over Budget</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Budget Cards Grid -->
+                    <div class="budget-grid" id="budget-grid">
+                        <!-- Populated by JS -->
+                        <div class="budget-empty-state" id="budget-empty-state">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                            <h3>No budgets yet</h3>
+                            <p>Create your first budget using the form above to start tracking spending.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Overlay for mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
