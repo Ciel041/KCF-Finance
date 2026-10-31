@@ -1,3 +1,7 @@
+/**
+ * Budget Progress API — /api/budgets/progress
+ * Uses req.orgId from session.
+ */
 import { getDb } from '../../lib/sqlite.js';
 import { getDateRangeForPeriod } from '../../lib/budget-helpers.js';
 
@@ -7,32 +11,23 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: `Method ${req.method} not allowed` });
     }
 
-    const { org_id } = req.query;
+    const orgId = req.orgId; // from session
 
     try {
         const db = getDb();
 
-        let sql = `
+        const budgets = db.prepare(`
             SELECT 
-                b.bud_id,
-                b.org_id,
-                b.cat_id,
-                b.amount AS budget_amount,
-                b.period,
+                b.bud_id, b.org_id, b.cat_id,
+                b.amount AS budget_amount, b.period,
                 COALESCE(o.name, '') AS org_name,
                 COALESCE(c.cat_name, '') AS cat_name
             FROM budgets b
             LEFT JOIN organisations o ON b.org_id = o.org_id
             LEFT JOIN categories c ON b.cat_id = c.cat_id
-        `;
-        let budgets;
-        if (org_id) {
-            sql += ' WHERE b.org_id = ? ORDER BY b.period DESC, b.bud_id DESC';
-            budgets = db.prepare(sql).all(Number(org_id));
-        } else {
-            sql += ' ORDER BY b.period DESC, b.bud_id DESC';
-            budgets = db.prepare(sql).all();
-        }
+            WHERE b.org_id = ?
+            ORDER BY b.period DESC, b.bud_id DESC
+        `).all(orgId);
 
         const expStmt = db.prepare(`
             SELECT COALESCE(SUM(amount), 0) AS total_spent
@@ -44,11 +39,7 @@ export default async function handler(req, res) {
             const range = getDateRangeForPeriod(budget.period);
             const expRow = expStmt.get(Number(budget.org_id), Number(budget.cat_id), range.start, range.end);
             const spent = expRow ? Number(expRow.total_spent) : 0;
-            return {
-                ...budget,
-                spent,
-                remaining: Number(budget.budget_amount) - spent
-            };
+            return { ...budget, spent, remaining: Number(budget.budget_amount) - spent };
         });
 
         return res.status(200).json(results);

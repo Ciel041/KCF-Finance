@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KCF Finance — Super Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0f1117; --surface: #1a1d27; --surface2: #222536;
+            --border: #2e3248; --primary: #f59e0b; --primary-hover: #d97706;
+            --text: #f1f5f9; --text-muted: #8892a4;
+            --danger: #ef4444; --success: #10b981; --radius: 14px;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* ── Login view ── */
+        #login-view { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+        .auth-container { width: 100%; max-width: 420px; }
+        .brand { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 2rem; }
+        .brand-logo { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #ef4444); display: flex; align-items: center; justify-content: center; }
+        .brand h1 { font-size: 1.4rem; font-weight: 700; }
+        .brand-sub { font-size: 0.75rem; color: var(--text-muted); }
+        .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; }
+        .auth-card h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .auth-card .sub { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.75rem; }
+        .badge-admin { display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(245,158,11,0.12); color: #fbbf24; font-size: 0.72rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 999px; border: 1px solid rgba(245,158,11,0.25); margin-bottom: 1.25rem; }
+        .form-group { margin-bottom: 1.1rem; }
+        label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-muted); }
+        .input-wrap { position: relative; }
+        input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.7rem 1rem; border-radius: 10px; font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s; }
+        input:focus { border-color: var(--primary); }
+        input.has-toggle { padding-right: 3rem; }
+        .toggle-pass { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; }
+        .btn-primary { width: 100%; background: var(--primary); color: #000; border: none; padding: 0.8rem; border-radius: 10px; font-size: 0.95rem; font-weight: 700; font-family: inherit; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .alert { border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.85rem; margin-bottom: 1rem; display: none; }
+        .alert-error  { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+        .back-link { text-align: center; font-size: 0.82rem; color: var(--text-muted); margin-top: 1.25rem; }
+        .back-link a { color: var(--text-muted); text-decoration: none; }
+        .back-link a:hover { color: var(--text); }
+
+        /* ── Admin Dashboard ── */
+        #dashboard-view { display: none; min-height: 100vh; }
+
+        .admin-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        }
+        .admin-header-brand { display: flex; align-items: center; gap: 0.75rem; }
+        .admin-header-brand .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; margin-right: 0.25rem; }
+        .admin-header h1 { font-size: 1rem; font-weight: 700; }
+        .badge-admin-sm { background: rgba(245,158,11,0.15); color: #fbbf24; font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.55rem; border-radius: 999px; border: 1px solid rgba(245,158,11,0.3); }
+        .btn-logout { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); padding: 0.45rem 1rem; border-radius: 8px; font-size: 0.83rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.4rem; }
+        .btn-logout:hover { background: rgba(239,68,68,0.2); }
+
+        .admin-main { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+        .admin-main h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.35rem; }
+        .admin-main .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 2rem; }
+
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+        .stat-card .stat-val { font-size: 1.8rem; font-weight: 700; color: #f59e0b; }
+        .stat-card .stat-lbl { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+        .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+        .table-card-header { padding: 1.25rem 1.5rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+        .table-card-header h3 { font-size: 1rem; font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.75rem 1.5rem; text-align: left; background: var(--surface2); }
+        td { padding: 1rem 1.5rem; font-size: 0.875rem; border-top: 1px solid var(--border); vertical-align: middle; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+        .empty-row td { text-align: center; color: var(--text-muted); padding: 2.5rem; }
+
+        .org-type-badge { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px; background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
+        .btn-delete { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); padding: 0.35rem 0.75rem; border-radius: 7px; font-size: 0.8rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.35rem; }
+        .btn-delete:hover { background: rgba(239,68,68,0.25); }
+        .loading-text { color: var(--text-muted); text-align: center; padding: 2rem; }
+
+        /* Modal */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-backdrop.open { display: flex; }
+        .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; max-width: 420px; width: 100%; }
+        .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .modal p { color: var(--text-muted); font-size: 0.875rem; line-height: 1.6; margin-bottom: 1.5rem; }
+        .modal-actions { display: flex; gap: 0.75rem; }
+        .btn-cancel { flex: 1; background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 0.7rem; border-radius: 10px; font-size: 0.9rem; font-weight: 600; font-family: inherit; cursor: pointer; }
+        .btn-confirm-delete { flex: 1; background: var(--danger); color: #fff; border: none; padding: 0.7rem; border-radius: 10px; font-size: 0.9rem; font-weight: 700; font-family: inherit; cursor: pointer; }
+        .btn-confirm-delete:hover { background: #dc2626; }
+
+        .spinner { width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 640px) { th, td { padding: 0.75rem 1rem; } .admin-main { padding: 1rem; } }
+    </style>
+</head>
+<body>
+
+<!-- ── LOGIN VIEW ─────────────────────────────────────────────────────── -->
+<div id="login-view">
+    <div class="auth-container">
+        <div class="brand">
+            <div class="brand-logo">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div><h1>KCF Finance</h1><div class="brand-sub">Administration Panel</div></div>
+        </div>
+        <div class="auth-card">
+            <div class="badge-admin">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 1z"/></svg>
+                Super Admin Access
+            </div>
+            <h2>Admin Sign In</h2>
+            <p class="sub">This portal is restricted to authorised administrators only.</p>
+
+            <div id="alert-box" class="alert alert-error"></div>
+
+            <form id="admin-login-form" novalidate>
+                <div class="form-group">
+                    <label for="admin-email">Admin Email</label>
+                    <input type="email" id="admin-email" placeholder="admin@kcf.finance" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-pass">Password</label>
+                    <div class="input-wrap">
+                        <input type="password" id="admin-pass" placeholder="Admin password" class="has-toggle" required>
+                        <button type="button" class="toggle-pass" onclick="toggleP(this)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" id="admin-login-btn">
+                    <span class="spinner" id="spinner"></span>
+                    <span id="btn-text">Sign In as Admin</span>
+                </button>
+            </form>
+            <div class="back-link"><a href="login.html">← Back to Organisation Login</a></div>
+        </div>
+    </div>
+</div>
+
+<!-- ── ADMIN DASHBOARD VIEW ───────────────────────────────────────────── -->
+<div id="dashboard-view">
+    <div class="admin-header">
+        <div class="admin-header-brand">
+            <span class="logo-dot"></span>
+            <h1>KCF Finance Admin</h1>
+            <span class="badge-admin-sm">Super Admin</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <span id="admin-email-display" style="font-size:0.82rem;color:var(--text-muted);"></span>
+            <button class="btn-logout" onclick="adminLogout()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <div class="admin-main">
+        <h2>Organisation Management</h2>
+        <p class="subtitle">View and manage all registered organisations, churches, and NGOs.</p>
+
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Total Organisations</div></div>
+            <div class="stat-card"><div class="stat-val" id="stat-newest">—</div><div class="stat-lbl">Newest Member</div></div>
+        </div>
+
+        <div class="table-card">
+            <div class="table-card-header">
+                <h3>All Organisations</h3>
+                <span id="org-count-badge" style="font-size:0.8rem;color:var(--text-muted);">Loading…</span>
+            </div>
+            <div id="table-wrapper">
+                <p class="loading-text">Loading organisations…</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── CONFIRM DELETE MODAL ───────────────────────────────────────────── -->
+<div class="modal-backdrop" id="delete-modal">
+    <div class="modal">
+        <h3>⚠ Delete Organisation</h3>
+        <p id="modal-msg">Are you sure you want to delete this organisation? All financial records (expenses, income, budgets, categories) will be permanently deleted. This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn-confirm-delete" id="confirm-delete-btn" onclick="confirmDelete()">Delete Permanently</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let orgs = [];
+let deleteTargetId = null;
+
+function toggleP(btn) {
+    const inp = document.getElementById('admin-pass');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.querySelector('svg').style.opacity = inp.type === 'text' ? '0.5' : '1';
+}
+
+function showAlert(msg) {
+    const box = document.getElementById('alert-box');
+    box.textContent = msg;
+    box.style.display = 'block';
+}
+
+// ── Check existing admin session on page load ───────────────────────────
+async function init() {
+    try {
+        const res = await fetch('/api/admin/me', { credentials: 'include' });
+        const data = await res.json();
+        if (data.authenticated) {
+            showDashboard(data.email);
+        }
+    } catch (e) { /* stay on login */ }
+}
+
+// ── Admin Login ─────────────────────────────────────────────────────────
+document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('admin-login-btn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btn-text');
+    const email = document.getElementById('admin-email').value.trim();
+    const password = document.getElementById('admin-pass').value;
+
+    if (!email || !password) { showAlert('Both fields are required.'); return; }
+
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Signing in…';
+    document.getElementById('alert-box').style.display = 'none';
+
+    try {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showDashboard(data.email || email);
+        } else {
+            showAlert(data.error || 'Invalid admin credentials.');
+            btn.disabled = false;
+            spinner.style.display = 'none';
+            btnText.textContent = 'Sign In as Admin';
+        }
+    } catch (err) {
+        showAlert('Network error. Please try again.');
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Sign In as Admin';
+    }
+});
+
+// ── Show Admin Dashboard ────────────────────────────────────────────────
+function showDashboard(email) {
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('dashboard-view').style.display = 'block';
+    document.getElementById('admin-email-display').textContent = email || '';
+    loadOrganisations();
+}
+
+// ── Load Organisations ──────────────────────────────────────────────────
+async function loadOrganisations() {
+    try {
+        const res = await fetch('/api/admin/organisations', { credentials: 'include' });
+        if (!res.ok) { document.getElementById('table-wrapper').innerHTML = '<p class="loading-text">Failed to load organisations. Access denied?</p>'; return; }
+        orgs = await res.json();
+        renderTable();
+    } catch (e) {
+        document.getElementById('table-wrapper').innerHTML = '<p class="loading-text">Network error loading data.</p>';
+    }
+}
+
+function renderTable() {
+    document.getElementById('stat-total').textContent = orgs.length;
+    document.getElementById('org-count-badge').textContent = `${orgs.length} organisation${orgs.length === 1 ? '' : 's'}`;
+    if (orgs.length > 0) {
+        const newest = orgs[0];
+        document.getElementById('stat-newest').textContent = newest.name.length > 14 ? newest.name.slice(0, 13) + '…' : newest.name;
+    }
+
+    if (orgs.length === 0) {
+        document.getElementById('table-wrapper').innerHTML = '<table><tbody><tr class="empty-row"><td colspan="7">No organisations registered yet.</td></tr></tbody></table>';
+        return;
+    }
+
+    const rows = orgs.map(o => `
+        <tr>
+            <td><strong>#${o.org_id}</strong></td>
+            <td><strong>${esc(o.name)}</strong></td>
+            <td><span class="org-type-badge">${esc(o.type || 'Standard')}</span></td>
+            <td style="color:var(--text-muted);font-size:0.82rem;">${esc(o.email || '—')}</td>
+            <td style="color:var(--text-muted);font-size:0.82rem;">${esc(o.Contact || '—')}</td>
+            <td style="font-size:0.82rem;color:var(--text-muted);">
+                ${o.expense_count} exp · ${o.income_count} inc · ${o.budget_count} bud
+            </td>
+            <td>
+                <button class="btn-delete" onclick="openDeleteModal(${o.org_id}, '${esc(o.name).replace(/'/g, '\\\'')}')" title="Delete Organisation">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Delete
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('table-wrapper').innerHTML = `
+        <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Email</th><th>Contact</th><th>Records</th><th>Action</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+}
+
+// ── Delete Modal ────────────────────────────────────────────────────────
+function openDeleteModal(id, name) {
+    deleteTargetId = id;
+    document.getElementById('modal-msg').textContent =
+        `Are you sure you want to permanently delete "${name}"? All associated expenses, income, budgets, and categories will be deleted. This cannot be undone.`;
+    document.getElementById('delete-modal').classList.add('open');
+}
+
+function closeModal() {
+    deleteTargetId = null;
+    document.getElementById('delete-modal').classList.remove('open');
+}
+
+async function confirmDelete() {
+    if (!deleteTargetId) return;
+    const btn = document.getElementById('confirm-delete-btn');
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+
+    try {
+        const res = await fetch(`/api/admin/organisations/${deleteTargetId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok) {
+            closeModal();
+            await loadOrganisations();
+        } else {
+            alert(data.error || 'Failed to delete organisation.');
+        }
+    } catch (e) {
+        alert('Network error. Please try again.');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Delete Permanently';
+}
+
+// ── Logout ──────────────────────────────────────────────────────────────
+async function adminLogout() {
+    if (!confirm('Sign out of the admin panel?')) return;
+    try {
+        await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
+    } catch (e) { /* ignore */ }
+    window.location.reload();
+}
+
+// Close modal on backdrop click
+document.getElementById('delete-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+});
+
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+init();
+</script>
+</body>
+</html>
+

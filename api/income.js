@@ -1,14 +1,19 @@
+/**
+ * Income API — /api/income
+ * org_id from req.orgId (session) — never trusted from client.
+ */
 import { getDb } from '../lib/sqlite.js';
 
 export default async function handler(req, res) {
     const { method } = req;
-    const { id, org_id } = req.query;
+    const { id } = req.query;
+    const orgId = req.orgId; // from session via requireAuth
 
     try {
         const db = getDb();
 
         if (method === 'GET') {
-            let sql = `
+            const rows = db.prepare(`
                 SELECT 
                     i.income_id,
                     i.org_id,
@@ -19,22 +24,14 @@ export default async function handler(req, res) {
                     COALESCE(o.name, '') AS org_name
                 FROM income i
                 LEFT JOIN organisations o ON i.org_id = o.org_id
-            `;
-            let rows;
-            if (org_id) {
-                sql += ' WHERE i.org_id = ? ORDER BY i.income_date DESC, i.income_id DESC';
-                rows = db.prepare(sql).all(Number(org_id));
-            } else {
-                sql += ' ORDER BY i.income_date DESC, i.income_id DESC';
-                rows = db.prepare(sql).all();
-            }
-
+                WHERE i.org_id = ?
+                ORDER BY i.income_date DESC, i.income_id DESC
+            `).all(orgId);
             return res.status(200).json(rows);
         }
 
         if (method === 'POST') {
-            const { org_id: bodyOrgId, Source, amount, income_date, description } = req.body;
-            if (!bodyOrgId) return res.status(400).json({ error: 'Organisation ID is required' });
+            const { Source, amount, income_date, description } = req.body;
             if (!Source || !Source.trim()) return res.status(400).json({ error: 'Income source is required' });
             if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
                 return res.status(400).json({ error: 'A valid positive amount is required' });
@@ -45,54 +42,36 @@ export default async function handler(req, res) {
             const result = db.prepare(`
                 INSERT INTO income (org_id, Source, amount, income_date, description, createdAt)
                 VALUES (?, ?, ?, ?, ?, ?)
-            `).run(
-                Number(bodyOrgId),
-                Source.trim(),
-                parseFloat(amount),
-                income_date,
-                description ? description.trim() : '',
-                now
-            );
+            `).run(orgId, Source.trim(), parseFloat(amount), income_date, (description || '').trim(), now);
 
             const income_id = Number(result.lastInsertRowid);
-            const doc = {
+            return res.status(200).json({
                 id: income_id,
                 income_id,
-                org_id: Number(bodyOrgId),
+                org_id: orgId,
                 Source: Source.trim(),
                 amount: parseFloat(amount),
                 income_date,
-                description: description ? description.trim() : '',
+                description: (description || '').trim(),
                 createdAt: now
-            };
-
-            return res.status(200).json(doc);
+            });
         }
 
         if (method === 'PUT') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
-            const { org_id: bodyOrgId, Source, amount, income_date, description } = req.body;
+            const { Source, amount, income_date, description } = req.body;
             const numId = Number(id);
-            const now = new Date().toISOString();
 
+            // Verify ownership
+            const inc = db.prepare('SELECT income_id FROM income WHERE income_id = ? AND org_id = ?').get(numId, orgId);
+            if (!inc) return res.status(403).json({ error: 'Income record not found for your organisation.' });
+
+            const now = new Date().toISOString();
             db.prepare(`
                 UPDATE income
-                SET org_id = ?,
-                    Source = COALESCE(?, Source),
-                    amount = ?,
-                    income_date = ?,
-                    description = ?,
-                    updatedAt = ?
-                WHERE income_id = ?
-            `).run(
-                Number(bodyOrgId),
-                Source ? Source.trim() : null,
-                parseFloat(amount),
-                income_date,
-                description ? description.trim() : '',
-                now,
-                numId
-            );
+                SET Source = COALESCE(?, Source), amount = ?, income_date = ?, description = ?, updatedAt = ?
+                WHERE income_id = ? AND org_id = ?
+            `).run(Source ? Source.trim() : null, parseFloat(amount), income_date, (description || '').trim(), now, numId, orgId);
 
             return res.status(200).json({ message: 'Updated successfully' });
         }
@@ -100,7 +79,12 @@ export default async function handler(req, res) {
         if (method === 'DELETE') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const numId = Number(id);
-            db.prepare('DELETE FROM income WHERE income_id = ?').run(numId);
+
+            // Verify ownership
+            const inc = db.prepare('SELECT income_id FROM income WHERE income_id = ? AND org_id = ?').get(numId, orgId);
+            if (!inc) return res.status(403).json({ error: 'Income record not found for your organisation.' });
+
+            db.prepare('DELETE FROM income WHERE income_id = ? AND org_id = ?').run(numId, orgId);
             return res.status(200).json({ message: 'Deleted successfully' });
         }
 

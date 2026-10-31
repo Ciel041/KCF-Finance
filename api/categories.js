@@ -1,68 +1,56 @@
+/**
+ * Categories API — /api/categories
+ * org_id from session (req.orgId) — not client-supplied.
+ */
 import { getDb } from '../lib/sqlite.js';
 
 export default async function handler(req, res) {
     const { method } = req;
     const { id } = req.query;
+    const orgId = req.orgId; // from session via requireAuth
 
     try {
         const db = getDb();
 
         if (method === 'GET') {
-            const rows = db.prepare('SELECT * FROM categories ORDER BY cat_id ASC').all();
+            const rows = db.prepare('SELECT * FROM categories WHERE org_id = ? ORDER BY cat_id ASC').all(orgId);
             return res.status(200).json(rows);
         }
 
         if (method === 'POST') {
-            const { org_id, cat_name, description } = req.body;
-            if (!org_id) return res.status(400).json({ error: 'Organisation ID is required' });
+            const { cat_name, description } = req.body;
             if (!cat_name || !cat_name.trim()) return res.status(400).json({ error: 'Category name is required' });
 
             const now = new Date().toISOString();
             const result = db.prepare(`
                 INSERT INTO categories (org_id, cat_name, description, createdAt)
                 VALUES (?, ?, ?, ?)
-            `).run(
-                Number(org_id),
-                cat_name.trim(),
-                description ? description.trim() : '',
-                now
-            );
+            `).run(orgId, cat_name.trim(), (description || '').trim(), now);
 
             const cat_id = Number(result.lastInsertRowid);
-            const doc = {
-                id: cat_id,
-                cat_id,
-                org_id: Number(org_id),
+            return res.status(200).json({
+                id: cat_id, cat_id, org_id: orgId,
                 cat_name: cat_name.trim(),
-                description: description ? description.trim() : '',
+                description: (description || '').trim(),
                 createdAt: now
-            };
-
-            return res.status(200).json(doc);
+            });
         }
 
         if (method === 'PUT') {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
-            const { org_id, cat_name, description } = req.body;
+            const { cat_name, description } = req.body;
             if (!cat_name || !cat_name.trim()) return res.status(400).json({ error: 'Category name is required' });
-
             const numId = Number(id);
-            const now = new Date().toISOString();
 
+            // Verify ownership
+            const cat = db.prepare('SELECT cat_id FROM categories WHERE cat_id = ? AND org_id = ?').get(numId, orgId);
+            if (!cat) return res.status(403).json({ error: 'Category not found for your organisation.' });
+
+            const now = new Date().toISOString();
             db.prepare(`
-                UPDATE categories
-                SET org_id = ?,
-                    cat_name = ?,
-                    description = ?,
-                    updatedAt = ?
-                WHERE cat_id = ?
-            `).run(
-                Number(org_id),
-                cat_name.trim(),
-                description ? description.trim() : '',
-                now,
-                numId
-            );
+                UPDATE categories SET cat_name = ?, description = ?, updatedAt = ?
+                WHERE cat_id = ? AND org_id = ?
+            `).run(cat_name.trim(), (description || '').trim(), now, numId, orgId);
 
             return res.status(200).json({ message: 'Updated successfully' });
         }
@@ -71,9 +59,13 @@ export default async function handler(req, res) {
             if (!id) return res.status(400).json({ error: 'Missing id parameter' });
             const numId = Number(id);
 
-            db.prepare('DELETE FROM expenses WHERE cat_id = ?').run(numId);
-            db.prepare('DELETE FROM budgets WHERE cat_id = ?').run(numId);
-            db.prepare('DELETE FROM categories WHERE cat_id = ?').run(numId);
+            // Verify ownership
+            const cat = db.prepare('SELECT cat_id FROM categories WHERE cat_id = ? AND org_id = ?').get(numId, orgId);
+            if (!cat) return res.status(403).json({ error: 'Category not found for your organisation.' });
+
+            db.prepare('DELETE FROM expenses  WHERE cat_id = ? AND org_id = ?').run(numId, orgId);
+            db.prepare('DELETE FROM budgets   WHERE cat_id = ? AND org_id = ?').run(numId, orgId);
+            db.prepare('DELETE FROM categories WHERE cat_id = ? AND org_id = ?').run(numId, orgId);
 
             return res.status(200).json({ message: 'Deleted successfully' });
         }
