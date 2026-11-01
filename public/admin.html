@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KCF Finance — Super Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0f1117; --surface: #1a1d27; --surface2: #222536;
+            --border: #2e3248; --primary: #f59e0b; --primary-hover: #d97706;
+            --text: #f1f5f9; --text-muted: #8892a4; --text-secondary: #b0bbc9;
+            --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
+            --info: #3b82f6; --radius: 14px;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* ── LOGIN VIEW ── */
+        #login-view { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+        .auth-container { width: 100%; max-width: 420px; }
+        .brand { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 2rem; }
+        .brand-logo { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #ef4444); display: flex; align-items: center; justify-content: center; }
+        .brand h1 { font-size: 1.4rem; font-weight: 700; }
+        .brand-sub { font-size: 0.75rem; color: var(--text-muted); }
+        .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; }
+        .auth-card h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .auth-card .sub { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.75rem; }
+        .badge-admin { display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(245,158,11,0.12); color: #fbbf24; font-size: 0.72rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 999px; border: 1px solid rgba(245,158,11,0.25); margin-bottom: 1.25rem; }
+        .form-group { margin-bottom: 1.1rem; }
+        label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-muted); }
+        .input-wrap { position: relative; }
+        input[type="email"], input[type="password"], input[type="text"] { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.7rem 1rem; border-radius: 10px; font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s; }
+        input:focus { border-color: var(--primary); }
+        input.has-toggle { padding-right: 3rem; }
+        .toggle-pass { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; }
+        .btn-primary { width: 100%; background: var(--primary); color: #000; border: none; padding: 0.8rem; border-radius: 10px; font-size: 0.95rem; font-weight: 700; font-family: inherit; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .alert { border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.85rem; margin-bottom: 1rem; display: none; }
+        .alert-error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+        .back-link { text-align: center; font-size: 0.82rem; color: var(--text-muted); margin-top: 1.25rem; }
+        .back-link a { color: var(--text-muted); text-decoration: none; }
+        .back-link a:hover { color: var(--text); }
+        .spinner { width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── ADMIN DASHBOARD ── */
+        #dashboard-view { display: none; min-height: 100vh; flex-direction: column; }
+
+        .admin-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.9rem 2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; position: sticky; top: 0; z-index: 100; }
+        .admin-header-brand { display: flex; align-items: center; gap: 0.75rem; }
+        .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; }
+        .admin-header h1 { font-size: 1rem; font-weight: 700; }
+        .badge-admin-sm { background: rgba(245,158,11,0.15); color: #fbbf24; font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.55rem; border-radius: 999px; border: 1px solid rgba(245,158,11,0.3); }
+        .btn-logout { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); padding: 0.4rem 0.9rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; }
+        .btn-logout:hover { background: rgba(239,68,68,0.2); }
+
+        /* Permissions notice */
+        .permissions-notice { background: rgba(59,130,246,0.08); border-bottom: 1px solid rgba(59,130,246,0.2); padding: 0.55rem 2rem; display: flex; align-items: center; gap: 0.6rem; font-size: 0.78rem; color: #93c5fd; }
+        .permissions-notice svg { flex-shrink: 0; }
+
+        /* Tabs */
+        .tab-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; gap: 0; }
+        .tab-btn { padding: 0.85rem 1.25rem; font-size: 0.85rem; font-weight: 500; font-family: inherit; background: none; border: none; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s; display: flex; align-items: center; gap: 0.4rem; }
+        .tab-btn:hover { color: var(--text); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab-badge { background: rgba(239,68,68,0.2); color: #f87171; font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; }
+
+        .admin-main { padding: 1.75rem 2rem; max-width: 1200px; margin: 0 auto; width: 100%; flex: 1; }
+
+        /* Stats */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.75rem; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.15rem 1.25rem; }
+        .stat-val { font-size: 1.6rem; font-weight: 700; color: #f59e0b; }
+        .stat-lbl { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+        .stat-val.danger { color: var(--danger); }
+        .stat-val.success { color: var(--success); }
+
+        /* Table card */
+        .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+        .table-card-header { padding: 1.1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+        .table-card-header h3 { font-size: 0.95rem; font-weight: 600; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 0.65rem 1.25rem; text-align: left; background: var(--surface2); white-space: nowrap; }
+        td { padding: 0.9rem 1.25rem; font-size: 0.85rem; border-top: 1px solid var(--border); vertical-align: middle; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+        tr.deleted-row td { opacity: 0.55; }
+        .empty-cell { text-align: center; color: var(--text-muted); padding: 2.5rem !important; }
+
+        /* Badges */
+        .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 0.18rem 0.55rem; border-radius: 999px; }
+        .badge-type { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
+        .badge-active { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+        .badge-deleted { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+        .badge-suspicious { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+        .badge-action { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); font-size: 0.68rem; padding: 0.15rem 0.45rem; }
+
+        /* Action buttons */
+        .btn-view { background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.25); padding: 0.3rem 0.7rem; border-radius: 7px; font-size: 0.78rem; font-weight: 600; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; }
+        .btn-view:hover { background: rgba(59,130,246,0.2); }
+        .btn-deactivate { background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); padding: 0.3rem 0.7rem; border-radius: 7px; font-size: 0.78rem; font-weight: 600; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; }
+        .btn-deactivate:hover { background: rgba(245,158,11,0.2); }
+        .btn-deactivate:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .loading-text { color: var(--text-muted); text-align: center; padding: 2.5rem; font-size: 0.875rem; }
+
+        /* ── ORG DETAIL SIDE PANEL ── */
+        .panel-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; }
+        .panel-backdrop.open { display: block; }
+        .side-panel { position: fixed; top: 0; right: -680px; width: 680px; max-width: 100vw; height: 100vh; background: var(--surface); border-left: 1px solid var(--border); z-index: 201; overflow-y: auto; transition: right 0.3s cubic-bezier(0.25,0.46,0.45,0.94); display: flex; flex-direction: column; }
+        .side-panel.open { right: 0; }
+        .panel-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+        .panel-header h2 { font-size: 1rem; font-weight: 600; }
+        .panel-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.3rem; border-radius: 6px; display: flex; }
+        .panel-close:hover { color: var(--text); background: var(--surface2); }
+        .panel-body { padding: 1.5rem; flex: 1; }
+        .panel-section { margin-bottom: 1.5rem; }
+        .panel-section h3 { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.9rem; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .info-item { background: var(--surface2); border-radius: 8px; padding: 0.65rem 0.9rem; }
+        .info-item .info-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.2rem; }
+        .info-item .info-value { font-size: 0.88rem; font-weight: 500; word-break: break-all; }
+        .fin-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+        .fin-card { background: var(--surface2); border-radius: 10px; padding: 0.9rem; text-align: center; border: 1px solid var(--border); }
+        .fin-card .fin-val { font-size: 1.2rem; font-weight: 700; }
+        .fin-card .fin-lbl { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem; }
+        .readonly-notice { background: rgba(59,130,246,0.07); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 0.6rem 0.9rem; font-size: 0.78rem; color: #93c5fd; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .exp-row-suspicious { background: rgba(239,68,68,0.05) !important; }
+
+        /* ── MODALS ── */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 500; }
+        .modal-backdrop.open { display: flex; }
+        .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; max-width: 440px; width: 90%; }
+        .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .modal-desc { color: var(--text-muted); font-size: 0.875rem; line-height: 1.65; margin-bottom: 1.5rem; }
+        .modal-warning { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.82rem; color: #fcd34d; margin-bottom: 1.25rem; }
+        .modal-actions { display: flex; gap: 0.75rem; }
+        .btn-cancel { flex: 1; background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 0.7rem; border-radius: 10px; font-size: 0.9rem; font-weight: 600; font-family: inherit; cursor: pointer; }
+        .btn-confirm-deactivate { flex: 1; background: var(--primary); color: #000; border: none; padding: 0.7rem; border-radius: 10px; font-size: 0.9rem; font-weight: 700; font-family: inherit; cursor: pointer; }
+        .btn-confirm-deactivate:hover:not(:disabled) { background: var(--primary-hover); }
+        .btn-confirm-deactivate:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* Audit log action badge colors */
+        .action-create { color: var(--success); }
+        .action-edit { color: var(--info); }
+        .action-delete { color: var(--danger); }
+        .action-admin { color: var(--primary); }
+
+        @media (max-width: 768px) {
+            .admin-main { padding: 1rem; }
+            .tab-bar { padding: 0 1rem; }
+            .permissions-notice { padding: 0.55rem 1rem; }
+            .admin-header { padding: 0.9rem 1rem; }
+            .side-panel { width: 100vw; }
+            .fin-cards { grid-template-columns: 1fr 1fr; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── LOGIN VIEW ──────────────────────────────────────────────────────────── -->
+<div id="login-view">
+    <div class="auth-container">
+        <div class="brand">
+            <div class="brand-logo">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div><h1>KCF Finance</h1><div class="brand-sub">Administration Panel</div></div>
+        </div>
+        <div class="auth-card">
+            <div class="badge-admin">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 1z"/></svg>
+                Super Admin Access
+            </div>
+            <h2>Admin Sign In</h2>
+            <p class="sub">This portal is restricted to authorised administrators only.</p>
+
+            <div id="alert-box" class="alert alert-error"></div>
+
+            <form id="admin-login-form" novalidate>
+                <div class="form-group">
+                    <label for="admin-email">Admin Email</label>
+                    <input type="email" id="admin-email" placeholder="admin@kcf.finance" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-pass">Password</label>
+                    <div class="input-wrap">
+                        <input type="password" id="admin-pass" placeholder="Admin password" class="has-toggle" required>
+                        <button type="button" class="toggle-pass" onclick="toggleP(this)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" id="admin-login-btn">
+                    <span class="spinner" id="spinner"></span>
+                    <span id="btn-text">Sign In as Admin</span>
+                </button>
+            </form>
+            <div class="back-link"><a href="login.html">← Back to Organisation Login</a></div>
+        </div>
+    </div>
+</div>
+
+<!-- ── DASHBOARD VIEW ─────────────────────────────────────────────────────── -->
+<div id="dashboard-view" style="display:none;flex-direction:column;min-height:100vh;">
+
+    <div class="admin-header">
+        <div class="admin-header-brand">
+            <span class="logo-dot"></span>
+            <h1>KCF Finance Admin</h1>
+            <span class="badge-admin-sm">Super Admin</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <span id="admin-email-display" style="font-size:0.82rem;color:var(--text-muted);"></span>
+            <button class="btn-logout" onclick="adminLogout()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <div class="permissions-notice">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <strong>Read-Only Access:</strong>&nbsp;Admin cannot create, edit, or delete financial records. Organisation management only.
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" id="tab-organisations" onclick="switchTab('organisations')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="18" height="11" rx="1"/><path d="M12 3L2 10h20L12 3z"/></svg>
+            Organisations
+        </button>
+        <button class="tab-btn" id="tab-audit" onclick="switchTab('audit')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Audit Log
+        </button>
+        <button class="tab-btn" id="tab-suspicious" onclick="switchTab('suspicious')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Suspicious Activity
+            <span class="tab-badge" id="suspicious-badge" style="display:none;">0</span>
+        </button>
+    </div>
+
+    <!-- ORGANISATIONS TAB -->
+    <div id="tab-content-organisations" class="admin-main">
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Total Organisations</div></div>
+            <div class="stat-card"><div class="stat-val" id="stat-active">—</div><div class="stat-lbl">Active</div></div>
+            <div class="stat-card"><div class="stat-val danger" id="stat-deleted">—</div><div class="stat-lbl">Deactivated</div></div>
+            <div class="stat-card"><div class="stat-val danger" id="stat-suspicious">—</div><div class="stat-lbl">Suspicious Flags</div></div>
+        </div>
+
+        <div class="table-card">
+            <div class="table-card-header">
+                <h3>All Organisations</h3>
+                <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;cursor:pointer;color:var(--text-muted);">
+                        <input type="checkbox" id="show-deleted-chk" onchange="loadOrganisations()" style="width:auto;padding:0;"> Show deactivated
+                    </label>
+                    <span id="org-count-badge" style="font-size:0.8rem;color:var(--text-muted);">Loading…</span>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <div id="orgs-table-wrapper"><p class="loading-text">Loading organisations…</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIT LOG TAB -->
+    <div id="tab-content-audit" class="admin-main" style="display:none;">
+        <div class="table-card">
+            <div class="table-card-header">
+                <h3>Audit Log</h3>
+                <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;cursor:pointer;color:var(--text-muted);">
+                        <input type="checkbox" id="audit-suspicious-only" onchange="loadAuditLog()" style="width:auto;padding:0;"> Suspicious only
+                    </label>
+                    <button onclick="loadAuditLog()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:0.3rem 0.7rem;border-radius:7px;font-size:0.78rem;cursor:pointer;font-family:inherit;">↻ Refresh</button>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <div id="audit-table-wrapper"><p class="loading-text">Loading audit log…</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUSPICIOUS ACTIVITY TAB -->
+    <div id="tab-content-suspicious" class="admin-main" style="display:none;">
+        <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;gap:0.75rem;align-items:flex-start;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div>
+                <div style="font-size:0.85rem;font-weight:600;color:#f87171;margin-bottom:0.2rem;">Suspicious Activity Detected</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);">These expense edits were automatically flagged due to: repeated modifications (&gt;3 edits) or editing records older than 30 days. Review for potential data manipulation.</div>
+            </div>
+        </div>
+        <div class="table-card">
+            <div class="table-card-header">
+                <h3>Flagged Expense Edits</h3>
+                <button onclick="loadSuspicious()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:0.3rem 0.7rem;border-radius:7px;font-size:0.78rem;cursor:pointer;font-family:inherit;">↻ Refresh</button>
+            </div>
+            <div class="table-wrap">
+                <div id="suspicious-table-wrapper"><p class="loading-text">Loading suspicious activity…</p></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── ORG DETAIL SIDE PANEL ──────────────────────────────────────────────── -->
+<div class="panel-backdrop" id="panel-backdrop" onclick="closeOrgPanel()"></div>
+<div class="side-panel" id="org-side-panel">
+    <div class="panel-header">
+        <h2 id="panel-org-name">Organisation Details</h2>
+        <button class="panel-close" onclick="closeOrgPanel()" title="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div class="panel-body">
+        <div id="panel-content"><p class="loading-text">Loading…</p></div>
+    </div>
+</div>
+
+<!-- ── DEACTIVATE MODAL ───────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="deactivate-modal">
+    <div class="modal">
+        <h3>⚠ Deactivate Organisation</h3>
+        <p class="modal-desc" id="deactivate-modal-msg">This will disable the organisation's login access.</p>
+        <div class="modal-warning">
+            <strong>Financial records will be preserved.</strong> All expenses, income, budgets, and categories are retained for audit purposes. This is a soft-deactivation — records are not permanently deleted. This action can only be reversed by an administrator with database access.
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeDeactivateModal()">Cancel</button>
+            <button class="btn-confirm-deactivate" id="confirm-deactivate-btn" onclick="confirmDeactivate()">Deactivate Organisation</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let orgs = [];
+let deactivateTargetId = null;
+let currentTab = 'organisations';
+let suspiciousTotal = 0;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function toggleP(btn) {
+    const inp = document.getElementById('admin-pass');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.querySelector('svg').style.opacity = inp.type === 'text' ? '0.5' : '1';
+}
+
+function showAlert(msg) {
+    const box = document.getElementById('alert-box');
+    box.textContent = msg;
+    box.style.display = 'block';
+}
+
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function fmtTs(isoStr) {
+    if (!isoStr) return '—';
+    try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        return d.toLocaleString(undefined, { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    } catch { return isoStr; }
+}
+
+function fmtMoney(n) {
+    const v = Number(n) || 0;
+    if (v >= 1000000) return '₹' + (v/1000000).toFixed(1) + 'M';
+    if (v >= 1000) return '₹' + (v/1000).toFixed(1) + 'K';
+    return '₹' + v.toFixed(2);
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+async function init() {
+    try {
+        const res = await fetch('/api/admin/me', { credentials: 'include' });
+        const data = await res.json();
+        if (data.authenticated) showDashboard(data.email);
+    } catch (e) { /* stay on login */ }
+}
+
+document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('admin-login-btn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btn-text');
+    const email = document.getElementById('admin-email').value.trim();
+    const password = document.getElementById('admin-pass').value;
+
+    if (!email || !password) { showAlert('Both fields are required.'); return; }
+
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Signing in…';
+    document.getElementById('alert-box').style.display = 'none';
+
+    try {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showDashboard(data.email || email);
+        } else {
+            showAlert(data.error || 'Invalid admin credentials.');
+            btn.disabled = false;
+            spinner.style.display = 'none';
+            btnText.textContent = 'Sign In as Admin';
+        }
+    } catch (err) {
+        showAlert('Network error. Please try again.');
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Sign In as Admin';
+    }
+});
+
+function showDashboard(email) {
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('dashboard-view').style.display = 'flex';
+    document.getElementById('admin-email-display').textContent = email || '';
+    loadOrganisations();
+    loadSuspiciousCount();
+}
+
+async function adminLogout() {
+    if (!confirm('Sign out of the admin panel?')) return;
+    try { await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }); } catch (e) {}
+    window.location.reload();
+}
+
+// ── Tab Switching ─────────────────────────────────────────────────────────────
+
+function switchTab(tab) {
+    currentTab = tab;
+    ['organisations', 'audit', 'suspicious'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+        document.getElementById(`tab-content-${t}`).style.display = t === tab ? 'block' : 'none';
+    });
+    if (tab === 'audit') loadAuditLog();
+    if (tab === 'suspicious') loadSuspicious();
+}
+
+// ── Load Suspicious Count (for badge) ────────────────────────────────────────
+
+async function loadSuspiciousCount() {
+    try {
+        const res = await fetch('/api/admin/suspicious', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        suspiciousTotal = data.total_suspicious || 0;
+        const badge = document.getElementById('suspicious-badge');
+        if (badge) {
+            badge.textContent = suspiciousTotal;
+            badge.style.display = suspiciousTotal > 0 ? 'inline-flex' : 'none';
+        }
+        document.getElementById('stat-suspicious').textContent = suspiciousTotal;
+    } catch (e) {}
+}
+
+// ── Organisations ─────────────────────────────────────────────────────────────
+
+async function loadOrganisations() {
+    const includeDeleted = document.getElementById('show-deleted-chk')?.checked ? '?include_deleted=1' : '';
+    try {
+        const res = await fetch('/api/admin/organisations' + includeDeleted, { credentials: 'include' });
+        if (!res.ok) {
+            document.getElementById('orgs-table-wrapper').innerHTML = '<p class="loading-text">Failed to load organisations.</p>';
+            return;
+        }
+        orgs = await res.json();
+        renderOrgsTable();
+    } catch (e) {
+        document.getElementById('orgs-table-wrapper').innerHTML = '<p class="loading-text">Network error loading data.</p>';
+    }
+}
+
+function renderOrgsTable() {
+    const active = orgs.filter(o => !o.is_deleted).length;
+    const deleted = orgs.filter(o => o.is_deleted).length;
+    document.getElementById('stat-total').textContent = orgs.length;
+    document.getElementById('stat-active').textContent = active;
+    document.getElementById('stat-deleted').textContent = deleted;
+    document.getElementById('org-count-badge').textContent = `${orgs.length} organisation${orgs.length === 1 ? '' : 's'}`;
+
+    if (orgs.length === 0) {
+        document.getElementById('orgs-table-wrapper').innerHTML = '<p class="loading-text">No organisations registered yet.</p>';
+        return;
+    }
+
+    const rows = orgs.map(o => `
+        <tr class="${o.is_deleted ? 'deleted-row' : ''}">
+            <td style="color:var(--text-muted);font-size:0.8rem;">#${o.org_id}</td>
+            <td><strong>${esc(o.name)}</strong></td>
+            <td><span class="badge badge-type">${esc(o.type || 'Standard')}</span></td>
+            <td style="color:var(--text-muted);font-size:0.82rem;">${esc(o.email || '—')}</td>
+            <td style="color:var(--text-muted);font-size:0.82rem;">${esc(o.Contact || '—')}</td>
+            <td style="font-size:0.82rem;">
+                <div style="display:flex;flex-direction:column;gap:2px;">
+                    <span style="color:var(--danger);">Exp: ${o.expense_count} (${fmtMoney(o.total_expenses)})</span>
+                    <span style="color:var(--success);">Inc: ${o.income_count} (${fmtMoney(o.total_income)})</span>
+                </div>
+            </td>
+            <td>
+                ${o.suspicious_count > 0
+                    ? `<span class="badge badge-suspicious">⚠ ${o.suspicious_count}</span>`
+                    : '<span style="color:var(--text-muted);font-size:0.75rem;">—</span>'}
+            </td>
+            <td>
+                ${o.is_deleted
+                    ? `<span class="badge badge-deleted">Deactivated</span>`
+                    : `<span class="badge badge-active">Active</span>`}
+            </td>
+            <td>
+                <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                    <button class="btn-view" onclick="openOrgDetail(${o.org_id})">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        View
+                    </button>
+                    ${!o.is_deleted ? `
+                    <button class="btn-deactivate" onclick="openDeactivateModal(${o.org_id}, '${esc(o.name).replace(/'/g,'\\\'')}')" title="Deactivate organisation">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        Deactivate
+                    </button>` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('orgs-table-wrapper').innerHTML = `
+        <table>
+            <thead><tr>
+                <th>ID</th><th>Name</th><th>Type</th><th>Email</th><th>Contact</th>
+                <th>Financial Summary</th><th>Suspicious</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+}
+
+// ── Org Detail Panel ──────────────────────────────────────────────────────────
+
+async function openOrgDetail(orgId) {
+    document.getElementById('panel-org-name').textContent = 'Loading…';
+    document.getElementById('panel-content').innerHTML = '<p class="loading-text">Loading organisation details…</p>';
+    document.getElementById('panel-backdrop').classList.add('open');
+    document.getElementById('org-side-panel').classList.add('open');
+
+    try {
+        const [orgRes, expRes] = await Promise.all([
+            fetch(`/api/admin/organisations/${orgId}`, { credentials: 'include' }),
+            fetch(`/api/admin/expenses/${orgId}`, { credentials: 'include' })
+        ]);
+        const org = await orgRes.json();
+        const expData = expRes.ok ? await expRes.json() : { expenses: [] };
+
+        document.getElementById('panel-org-name').textContent = org.name || 'Organisation';
+
+        const net = (org.total_income || 0) - (org.total_expenses || 0);
+        const netColor = net >= 0 ? 'var(--success)' : 'var(--danger)';
+
+        const expRows = (expData.expenses || []).map(e => `
+            <tr class="${e.suspicious_edit_count > 0 ? 'exp-row-suspicious' : ''}">
+                <td>${e.e_date}</td>
+                <td>${esc(e.cat_name)}</td>
+                <td style="color:var(--danger);">₹${Number(e.amount).toFixed(2)}</td>
+                <td style="color:var(--text-muted);font-size:0.78rem;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.description || '—')}</td>
+                <td style="font-size:0.75rem;color:var(--text-muted);">${fmtTs(e.createdAt)}</td>
+                <td style="font-size:0.75rem;color:var(--text-muted);">${e.updatedAt ? fmtTs(e.updatedAt) : '—'}</td>
+                <td style="text-align:center;">
+                    ${e.edit_count > 0
+                        ? `<span style="font-size:0.75rem;${e.suspicious_edit_count > 0 ? 'color:var(--danger);font-weight:600;' : 'color:var(--text-muted);'}">
+                            ${e.suspicious_edit_count > 0 ? '⚠ ' : ''}${e.edit_count}
+                           </span>`
+                        : '<span style="color:var(--text-muted);font-size:0.75rem;">0</span>'}
+                </td>
+            </tr>
+        `).join('') || `<tr><td colspan="7" class="empty-cell">No expenses recorded.</td></tr>`;
+
+        document.getElementById('panel-content').innerHTML = `
+            <div class="panel-section">
+                <h3>Organisation Info</h3>
+                <div class="info-grid">
+                    <div class="info-item"><div class="info-label">Name</div><div class="info-value">${esc(org.name)}</div></div>
+                    <div class="info-item"><div class="info-label">Type</div><div class="info-value">${esc(org.type || 'Standard')}</div></div>
+                    <div class="info-item"><div class="info-label">Email</div><div class="info-value" style="font-size:0.82rem;">${esc(org.email || '—')}</div></div>
+                    <div class="info-item"><div class="info-label">Contact</div><div class="info-value">${esc(org.Contact || '—')}</div></div>
+                    <div class="info-item"><div class="info-label">Address</div><div class="info-value">${esc(org.address || '—')}</div></div>
+                    <div class="info-item"><div class="info-label">Registered</div><div class="info-value" style="font-size:0.82rem;">${fmtTs(org.createdAt)}</div></div>
+                    <div class="info-item"><div class="info-label">Status</div><div class="info-value">
+                        ${org.is_deleted
+                            ? `<span class="badge badge-deleted">Deactivated ${fmtTs(org.deleted_at)}</span>`
+                            : `<span class="badge badge-active">Active</span>`}
+                    </div></div>
+                </div>
+            </div>
+            <div class="panel-section">
+                <h3>Financial Summary</h3>
+                <div class="fin-cards">
+                    <div class="fin-card">
+                        <div class="fin-val" style="color:var(--success);">${fmtMoney(org.total_income)}</div>
+                        <div class="fin-lbl">Total Income</div>
+                    </div>
+                    <div class="fin-card">
+                        <div class="fin-val" style="color:var(--danger);">${fmtMoney(org.total_expenses)}</div>
+                        <div class="fin-lbl">Total Expenses</div>
+                    </div>
+                    <div class="fin-card">
+                        <div class="fin-val" style="color:${netColor};">${net < 0 ? '-' : ''}${fmtMoney(Math.abs(net))}</div>
+                        <div class="fin-lbl">Net Balance</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-section">
+                <h3>Expense Records (${(expData.expenses || []).length})</h3>
+                <div class="readonly-notice">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Read-only view. Admins cannot create, edit, or delete expenses.
+                </div>
+                <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border);">
+                    <table>
+                        <thead><tr>
+                            <th>Date</th><th>Category</th><th>Amount</th><th>Description</th>
+                            <th>Created</th><th>Last Modified</th><th>Edits</th>
+                        </tr></thead>
+                        <tbody>${expRows}</tbody>
+                    </table>
+                </div>
+            </div>`;
+    } catch (err) {
+        document.getElementById('panel-content').innerHTML = `<p style="color:var(--danger);text-align:center;padding:2rem;">${err.message}</p>`;
+    }
+}
+
+function closeOrgPanel() {
+    document.getElementById('panel-backdrop').classList.remove('open');
+    document.getElementById('org-side-panel').classList.remove('open');
+}
+
+// ── Audit Log ─────────────────────────────────────────────────────────────────
+
+async function loadAuditLog() {
+    const onlySuspicious = document.getElementById('audit-suspicious-only')?.checked ? '&suspicious=1' : '';
+    document.getElementById('audit-table-wrapper').innerHTML = '<p class="loading-text">Loading audit log…</p>';
+    try {
+        const res = await fetch('/api/admin/audit-log?limit=200' + onlySuspicious, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load audit log.');
+        const data = await res.json();
+        renderAuditTable(data.logs || []);
+    } catch (e) {
+        document.getElementById('audit-table-wrapper').innerHTML = `<p class="loading-text" style="color:var(--danger);">${e.message}</p>`;
+    }
+}
+
+function renderAuditTable(logs) {
+    if (logs.length === 0) {
+        document.getElementById('audit-table-wrapper').innerHTML = '<p class="loading-text">No audit entries found.</p>';
+        return;
+    }
+    const actionColor = (a) => {
+        if (a.includes('CREATE')) return 'action-create';
+        if (a.includes('EDIT') || a.includes('UPDATE')) return 'action-edit';
+        if (a.includes('DELETE')) return 'action-delete';
+        return 'action-admin';
+    };
+    const rows = logs.map(l => `
+        <tr style="${l.is_suspicious ? 'background:rgba(239,68,68,0.04);' : ''}">
+            <td style="font-size:0.78rem;color:var(--text-muted);">${l.log_id}</td>
+            <td><span class="${actionColor(l.action)}" style="font-size:0.8rem;font-weight:600;">${esc(l.action)}</span>
+                ${l.is_suspicious ? '<span class="badge badge-suspicious" style="margin-left:4px;font-size:0.65rem;">⚠ Suspicious</span>' : ''}
+            </td>
+            <td style="font-size:0.82rem;">${l.target_org_id ? '#' + l.target_org_id : '—'}</td>
+            <td style="font-size:0.82rem;">${esc(l.performed_by)}</td>
+            <td style="font-size:0.78rem;color:var(--text-muted);">${fmtTs(l.performed_at)}</td>
+            <td style="font-size:0.78rem;color:var(--text-muted);max-width:200px;">
+                ${l.change_reason ? `<em>"${esc(l.change_reason)}"</em>` : (l.details ? `<span title="${esc(l.details)}" style="cursor:help;">${esc(l.details).substring(0,60)}${l.details.length > 60 ? '…' : ''}</span>` : '—')}
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('audit-table-wrapper').innerHTML = `
+        <table>
+            <thead><tr><th>#</th><th>Action</th><th>Org ID</th><th>By</th><th>At</th><th>Details / Reason</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+}
+
+// ── Suspicious Activity ───────────────────────────────────────────────────────
+
+async function loadSuspicious() {
+    document.getElementById('suspicious-table-wrapper').innerHTML = '<p class="loading-text">Loading suspicious activity…</p>';
+    try {
+        const res = await fetch('/api/admin/suspicious', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load suspicious activity.');
+        const data = await res.json();
+        renderSuspiciousTable(data.records || [], data);
+    } catch (e) {
+        document.getElementById('suspicious-table-wrapper').innerHTML = `<p class="loading-text" style="color:var(--danger);">${e.message}</p>`;
+    }
+}
+
+function renderSuspiciousTable(records, summary) {
+    const header = document.querySelector('#tab-content-suspicious .table-card-header');
+    if (header) {
+        header.querySelector('h3').textContent = `Flagged Expense Edits (${summary.total_suspicious || 0} total, ${summary.affected_org_count || 0} org${summary.affected_org_count === 1 ? '' : 's'})`;
+    }
+    if (records.length === 0) {
+        document.getElementById('suspicious-table-wrapper').innerHTML = '<p class="loading-text" style="color:var(--success);">✓ No suspicious activity detected.</p>';
+        return;
+    }
+    const rows = records.map(r => {
+        let oldV = {}, newV = {};
+        try { oldV = JSON.parse(r.old_values || '{}'); } catch {}
+        try { newV = JSON.parse(r.new_values || '{}'); } catch {}
+        return `
+        <tr>
+            <td style="font-size:0.8rem;color:var(--text-muted);">#${r.exp_id}</td>
+            <td style="font-size:0.82rem;"><strong>${esc(r.org_name || '—')}</strong></td>
+            <td style="font-size:0.82rem;">${esc(r.changed_by)}</td>
+            <td style="font-size:0.78rem;color:var(--text-muted);">${fmtTs(r.changed_at)}</td>
+            <td style="font-size:0.78rem;color:var(--danger);max-width:200px;">${esc(r.suspicious_reason || '—')}</td>
+            <td style="font-size:0.78rem;color:var(--text-muted);max-width:180px;font-style:italic;">${r.change_reason ? '"' + esc(r.change_reason) + '"' : '—'}</td>
+            <td style="font-size:0.75rem;">
+                ${oldV.amount !== undefined ? `<span style="color:var(--danger);">₹${Number(oldV.amount).toFixed(2)}</span> → <span style="color:var(--success);">₹${Number(newV.amount||0).toFixed(2)}</span>` : '—'}
+            </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('suspicious-table-wrapper').innerHTML = `
+        <table>
+            <thead><tr>
+                <th>Exp ID</th><th>Organisation</th><th>Edited By</th><th>Edited At</th>
+                <th>Suspicious Reason</th><th>Given Reason</th><th>Amount Change</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+}
+
+// ── Deactivate Modal ──────────────────────────────────────────────────────────
+
+function openDeactivateModal(id, name) {
+    deactivateTargetId = id;
+    document.getElementById('deactivate-modal-msg').innerHTML =
+        `You are about to deactivate <strong>"${esc(name)}"</strong>. Their login will be immediately disabled.`;
+    document.getElementById('deactivate-modal').classList.add('open');
+    document.getElementById('confirm-deactivate-btn').disabled = false;
+    document.getElementById('confirm-deactivate-btn').textContent = 'Deactivate Organisation';
+}
+
+function closeDeactivateModal() {
+    deactivateTargetId = null;
+    document.getElementById('deactivate-modal').classList.remove('open');
+}
+
+async function confirmDeactivate() {
+    if (!deactivateTargetId) return;
+    const btn = document.getElementById('confirm-deactivate-btn');
+    btn.disabled = true;
+    btn.textContent = 'Deactivating…';
+
+    try {
+        const res = await fetch(`/api/admin/organisations/${deactivateTargetId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok) {
+            closeDeactivateModal();
+            await loadOrganisations();
+            loadSuspiciousCount();
+            // Show brief success notice
+            const notice = document.createElement('div');
+            notice.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#1a2a1a;border:1px solid var(--success);color:var(--success);padding:0.75rem 1.25rem;border-radius:10px;font-size:0.85rem;z-index:9999;max-width:360px;';
+            notice.textContent = '✓ ' + (data.message || 'Organisation deactivated.');
+            document.body.appendChild(notice);
+            setTimeout(() => notice.remove(), 5000);
+        } else {
+            alert(data.error || 'Failed to deactivate organisation.');
+        }
+    } catch (e) {
+        alert('Network error. Please try again.');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Deactivate Organisation';
+}
+
+// Close deactivate modal on backdrop click
+document.getElementById('deactivate-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeDeactivateModal();
+});
+
+init();
+</script>
+</body>
+</html>
