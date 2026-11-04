@@ -1,0 +1,96 @@
+import { getDb } from '../lib/sqlite.js';
+
+export default async function handler(req, res) {
+    const { method } = req;
+    const { id } = req.query;
+
+    try {
+        const db = getDb();
+
+        if (method === 'GET') {
+            // Regular users only see active (non-deleted) organisations; admins see all via /api/admin/organisations
+            const rows = db.prepare('SELECT * FROM organisations WHERE is_deleted = 0 ORDER BY org_id ASC').all();
+            return res.status(200).json(rows);
+        }
+
+        if (method === 'POST') {
+            const { name, type, address, contact, Contact } = req.body;
+            const contactVal = contact || Contact; // accept both for backwards compat
+            if (!name || !name.trim()) {
+                return res.status(400).json({ error: 'Organisation name is required' });
+            }
+
+            const now = new Date().toISOString();
+            const result = db.prepare(`
+                INSERT INTO organisations (name, type, address, contact, createdAt)
+                VALUES (?, ?, ?, ?, ?)
+            `).run(
+                name.trim(),
+                type || 'Standard',
+                address ? address.trim() : '',
+                contactVal ? contactVal.trim() : '',
+                now
+            );
+
+            const org_id = Number(result.lastInsertRowid);
+            const doc = {
+                id: org_id,
+                org_id,
+                name: name.trim(),
+                type: type || 'Standard',
+                address: address ? address.trim() : '',
+                contact: contactVal ? contactVal.trim() : '',
+                createdAt: now
+            };
+
+            return res.status(200).json(doc);
+        }
+
+        if (method === 'PUT') {
+            if (!id) return res.status(400).json({ error: 'Missing id parameter' });
+            const { name, type, address, contact, Contact } = req.body;
+            const contactVal = contact !== undefined ? contact : Contact; // accept both
+            const numId = Number(id);
+            const now = new Date().toISOString();
+
+            db.prepare(`
+                UPDATE organisations
+                SET name = COALESCE(?, name),
+                    type = COALESCE(?, type),
+                    address = ?,
+                    contact = ?,
+                    updatedAt = ?
+                WHERE org_id = ?
+            `).run(
+                name ? name.trim() : null,
+                type || null,
+                address ? address.trim() : '',
+                contactVal !== undefined ? (contactVal ? contactVal.trim() : '') : '',
+                now,
+                numId
+            );
+
+            return res.status(200).json({ message: 'Updated successfully' });
+        }
+
+        if (method === 'DELETE') {
+            if (!id) return res.status(400).json({ error: 'Missing id parameter' });
+            const numId = Number(id);
+
+            // Delete child records and organisation
+            db.prepare('DELETE FROM expenses WHERE org_id = ?').run(numId);
+            db.prepare('DELETE FROM income WHERE org_id = ?').run(numId);
+            db.prepare('DELETE FROM budgets WHERE org_id = ?').run(numId);
+            db.prepare('DELETE FROM categories WHERE org_id = ?').run(numId);
+            db.prepare('DELETE FROM organisations WHERE org_id = ?').run(numId);
+
+            return res.status(200).json({ message: 'Deleted successfully' });
+        }
+
+        res.setHeader('Allow', 'GET, POST, PUT, DELETE');
+        return res.status(405).json({ error: `Method ${method} not allowed` });
+    } catch (err) {
+        console.error('API Error in organisations:', err);
+        return res.status(500).json({ error: err.message });
+    }
+}
