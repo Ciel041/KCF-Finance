@@ -871,6 +871,7 @@ async function updateBudgetIndicator() {
 
 async function loadBudgetDashboard() {
     try {
+        renderCategoryChips();
         const res = await fetch(`${API}/budgets/progress`, { credentials: 'include' });
         if (!res.ok) return;
         allBudgetData = await res.json();

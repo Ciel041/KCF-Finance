@@ -79,10 +79,11 @@ export default async function handler(req, res) {
                 return res.status(409).json({ error: 'A budget for this category and period already exists.' });
             }
 
+            const legacyPeriod = period_value.trim();
             const result = db.prepare(`
-                INSERT INTO budgets (org_id, cat_id, amount, period_type, period_value, createdAt)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `).run(orgId, Number(cat_id), parseFloat(amount), period_type, period_value.trim(), now);
+                INSERT INTO budgets (org_id, cat_id, amount, period, period_type, period_value, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).run(orgId, Number(cat_id), parseFloat(amount), legacyPeriod, period_type, period_value.trim(), now);
 
             const bud_id = Number(result.lastInsertRowid);
             return res.status(200).json({
@@ -121,11 +122,12 @@ export default async function handler(req, res) {
             if (!bud) return res.status(403).json({ error: 'Budget not found for your organisation.' });
 
             const now = new Date().toISOString();
+            const legacyPeriod = period_value ? period_value.trim() : null;
             db.prepare(`
                 UPDATE budgets
-                SET cat_id = ?, amount = ?, period_type = ?, period_value = ?, updatedAt = ?
+                SET cat_id = ?, amount = ?, period = COALESCE(?, period), period_type = ?, period_value = ?, updatedAt = ?
                 WHERE bud_id = ?
-            `).run(Number(cat_id), parseFloat(amount), period_type, period_value ? period_value.trim() : null, now, numId);
+            `).run(Number(cat_id), parseFloat(amount), legacyPeriod, period_type, legacyPeriod, now, numId);
 
             return res.status(200).json({ message: 'Updated successfully' });
         }

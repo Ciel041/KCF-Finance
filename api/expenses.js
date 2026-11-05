@@ -88,7 +88,8 @@ export default async function handler(req, res) {
         // ── POST (Create) ────────────────────────────────────────────────────
 
         if (method === 'POST') {
-            const { cat_id, amount, e_date, description } = req.body;
+            const { cat_id, amount, description } = req.body;
+            const e_date = req.body.e_date || req.body.expense_date;
             if (!cat_id) return res.status(400).json({ error: 'Category is required' });
             if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
                 return res.status(400).json({ error: 'A valid positive amount is required' });
@@ -212,10 +213,11 @@ export default async function handler(req, res) {
                 e_date: exp.e_date,
                 description: exp.description
             };
+            const resolvedDate = e_date !== undefined ? e_date : req.body.expense_date;
             const newValues = {
                 cat_id: cat_id !== undefined ? Number(cat_id) : exp.cat_id,
                 amount: amount !== undefined ? parseFloat(amount) : exp.amount,
-                e_date: e_date !== undefined ? e_date : exp.e_date,
+                e_date: resolvedDate !== undefined ? resolvedDate : exp.e_date,
                 description: description !== undefined ? description.trim() : exp.description
             };
 

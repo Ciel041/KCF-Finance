@@ -250,9 +250,14 @@
                         <div class="form-grid">
                             <div class="input-group">
                                 <label for="bud-cat-select">Category</label>
-                                <select id="bud-cat-select" required>
-                                    <option value="">Select category…</option>
-                                </select>
+                                <div style="display:flex;gap:0.5rem;align-items:center;">
+                                    <select id="bud-cat-select" required style="flex:1;">
+                                        <option value="">Select category…</option>
+                                    </select>
+                                    <button type="button" class="btn btn-secondary" onclick="toggleCatManager()" style="white-space:nowrap;padding:0.45rem 0.75rem;font-size:0.8rem;">
+                                        + Categories
+                                    </button>
+                                </div>
                             </div>
                             <div class="input-group">
                                 <label for="bud-amount">Budget Amount</label>
@@ -286,6 +291,28 @@
                             <button type="button" class="btn btn-secondary" id="bud-cancel-btn" style="display:none;" onclick="cancelEditBudget()">Cancel</button>
                         </div>
                     </form>
+
+                    <!-- Manage Categories inline in Budget -->
+                    <div class="category-manager">
+                        <div class="cat-manager-toggle" id="cat-toggle" onclick="toggleCatManager()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                            Manage Categories
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" id="cat-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        <div class="cat-manager-body" id="cat-manager-body" style="display:none;">
+                            <form id="cat-form" style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+                                <div class="input-group" style="flex:1;min-width:160px;margin-bottom:0;">
+                                    <label for="cat-name">New Category Name</label>
+                                    <input type="text" id="cat-name" placeholder="e.g. Food, Utilities" required>
+                                </div>
+                                <button type="submit" class="btn btn-secondary" id="cat-submit-btn">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    Add Category
+                                </button>
+                            </form>
+                            <div id="category-chips" class="category-chips"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="section-header-row">
@@ -409,28 +436,6 @@
                             <button type="button" class="btn btn-secondary" id="exp-cancel-btn" style="display:none;" onclick="cancelEditExpense()">Cancel</button>
                         </div>
                     </form>
-
-                    <!-- Manage Categories inline -->
-                    <div class="category-manager">
-                        <div class="cat-manager-toggle" id="cat-toggle" onclick="toggleCatManager()">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                            Manage Categories
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" id="cat-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-                        </div>
-                        <div class="cat-manager-body" id="cat-manager-body" style="display:none;">
-                            <form id="cat-form" style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
-                                <div class="input-group" style="flex:1;min-width:160px;margin-bottom:0;">
-                                    <label for="cat-name">New Category Name</label>
-                                    <input type="text" id="cat-name" placeholder="e.g. Food, Utilities" required>
-                                </div>
-                                <button type="submit" class="btn btn-secondary" id="cat-submit-btn">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                    Add Category
-                                </button>
-                            </form>
-                            <div id="category-chips" class="category-chips"></div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Live Budget Indicator -->

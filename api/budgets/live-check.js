@@ -14,7 +14,8 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: `Method ${req.method} not allowed` });
     }
 
-    const { cat_id, date } = req.query;
+    const cat_id = req.query.cat_id;
+    const date = req.query.date || req.query.expense_date || req.query.e_date;
     const orgId = req.orgId; // from session
 
     if (!cat_id || !date) {
