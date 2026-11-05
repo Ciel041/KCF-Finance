@@ -223,7 +223,7 @@
             <!-- ══════════════════════════════════════════════════════ -->
             <section id="budget-view" class="view">
                 <div class="budget-stats" id="budget-stats">
-                    <div class="budget-stat-card">
+                    <div class="budget-stat-card" onclick="setBudgetFilter('')" style="cursor:pointer;" title="Click to view all budgets">
                         <div class="stat-icon stat-icon-total"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
                         <div class="stat-content"><span class="stat-label">Total Budgets</span><span class="stat-value" id="stat-total-budgets">0</span></div>
                     </div>
@@ -235,8 +235,12 @@
                         <div class="stat-icon stat-icon-spent"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 010 7H6"/></svg></div>
                         <div class="stat-content"><span class="stat-label">Total Spent</span><span class="stat-value" id="stat-total-spent">₹0</span></div>
                     </div>
-                    <div class="budget-stat-card">
-                        <div class="stat-icon stat-icon-alert"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+                    <div class="budget-stat-card" onclick="setBudgetFilter('warning')" style="cursor:pointer;" title="Click to filter near-limit / warning budgets">
+                        <div class="stat-icon stat-icon-warning"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+                        <div class="stat-content"><span class="stat-label">Near Limit (>75%)</span><span class="stat-value stat-value-warning" id="stat-warning-budget">0</span></div>
+                    </div>
+                    <div class="budget-stat-card" onclick="setBudgetFilter('over-budget')" style="cursor:pointer;" title="Click to filter over-budget categories">
+                        <div class="stat-icon stat-icon-alert"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
                         <div class="stat-content"><span class="stat-label">Over Budget</span><span class="stat-value stat-value-danger" id="stat-over-budget">0</span></div>
                     </div>
                 </div>
@@ -328,10 +332,13 @@
                 </div>
 
                 <div class="budget-grid" id="budget-grid">
-                    <div class="empty-state" id="budget-empty-state">
-                        <div class="empty-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
-                        <h3>No budgets yet</h3>
-                        <p>Create your first budget above to start tracking spending</p>
+                    <div class="budget-empty-state" id="budget-empty-state" style="display:none;">
+                        <div class="empty-icon" id="budget-empty-icon">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        </div>
+                        <h3 id="budget-empty-title">No budgets yet</h3>
+                        <p id="budget-empty-desc">Create your first budget above to start tracking spending against allocations.</p>
+                        <div id="budget-empty-action"></div>
                     </div>
                 </div>
             </section>

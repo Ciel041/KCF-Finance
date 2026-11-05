@@ -1103,7 +1103,7 @@ tr:hover td {
 
 .budget-stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
     margin-bottom: 1.75rem;
 }
@@ -1138,7 +1138,10 @@ tr:hover td {
 .stat-icon-total { background: rgba(99, 102, 241, 0.12); color: var(--primary); }
 .stat-icon-allocated { background: var(--secondary-glow); color: var(--secondary); }
 .stat-icon-spent { background: rgba(56, 189, 248, 0.12); color: var(--info); }
+.stat-icon-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
 .stat-icon-alert { background: var(--danger-glow); color: var(--danger); }
+
+.stat-value-warning { color: var(--warning); }
 
 .stat-content {
     display: flex;
@@ -1412,7 +1415,7 @@ tr:hover td {
     background: var(--danger-glow);
 }
 
-/* Over budget alert badge */
+/* Status badges */
 .over-budget-badge {
     display: inline-flex;
     align-items: center;
@@ -1425,8 +1428,48 @@ tr:hover td {
     letter-spacing: 0.04em;
     background: var(--danger-glow);
     color: var(--danger);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
     animation: badgePulse 1.5s ease-in-out infinite;
+}
+
+.warning-budget-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.on-track-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.budget-card.warning-budget {
+    border-color: rgba(245, 158, 11, 0.45);
+    box-shadow: 0 4px 18px rgba(245, 158, 11, 0.07);
+}
+
+.budget-remaining .remaining-warning {
+    color: var(--warning);
+    font-weight: 600;
 }
 
 @keyframes badgePulse {
@@ -1437,26 +1480,44 @@ tr:hover td {
 /* Empty State */
 .budget-empty-state {
     grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    padding: 4rem 2rem;
-    color: var(--text-dim);
+    padding: 3.5rem 2rem;
+    background: var(--dark-card);
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    margin: 0.5rem 0;
 }
 
-.budget-empty-state svg {
-    margin-bottom: 1.25rem;
-    opacity: 0.3;
+.budget-empty-state .empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    margin-bottom: 1rem;
+    color: var(--text-dim);
+    transition: all var(--transition);
 }
 
 .budget-empty-state h3 {
     font-size: 1.15rem;
-    color: var(--text-muted);
-    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.45rem 0;
 }
 
 .budget-empty-state p {
-    font-size: 0.88rem;
-    max-width: 350px;
-    margin: 0 auto;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    max-width: 440px;
+    margin: 0 auto 1.25rem;
     line-height: 1.5;
 }
 

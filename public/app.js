@@ -884,13 +884,54 @@ function updateBudgetStats(budgets) {
     const total = budgets.length;
     const allocated = budgets.reduce((s, b) => s + b.budget_amount, 0);
     const spent = budgets.reduce((s, b) => s + b.spent, 0);
+    const warning = budgets.filter(b => {
+        const pct = b.budget_amount > 0 ? (b.spent / b.budget_amount) * 100 : 0;
+        return pct > 75 && pct <= 100;
+    }).length;
     const over = budgets.filter(b => b.spent > b.budget_amount).length;
 
     document.getElementById('stat-total-budgets').textContent = total;
     document.getElementById('stat-total-allocated').textContent = `₹${formatNumber(allocated)}`;
     document.getElementById('stat-total-spent').textContent = `₹${formatNumber(spent)}`;
+    const warnEl = document.getElementById('stat-warning-budget');
+    if (warnEl) warnEl.textContent = warning;
     document.getElementById('stat-over-budget').textContent = over;
+
+    updateFilterCounts(budgets);
 }
+
+function updateFilterCounts(budgets) {
+    const sel = document.getElementById('budget-filter-status');
+    if (!sel) return;
+    const currentVal = sel.value;
+    const total = budgets.length;
+    const onTrack = budgets.filter(b => {
+        const pct = b.budget_amount > 0 ? (b.spent / b.budget_amount) * 100 : 0;
+        return pct <= 75;
+    }).length;
+    const warning = budgets.filter(b => {
+        const pct = b.budget_amount > 0 ? (b.spent / b.budget_amount) * 100 : 0;
+        return pct > 75 && pct <= 100;
+    }).length;
+    const over = budgets.filter(b => b.spent > b.budget_amount).length;
+
+    sel.innerHTML = `
+        <option value="">All Statuses (${total})</option>
+        <option value="on-track">On Track (${onTrack})</option>
+        <option value="warning">Warning / Near Limit (${warning})</option>
+        <option value="over-budget">Over Budget (${over})</option>
+    `;
+    sel.value = currentVal;
+}
+
+function setBudgetFilter(val) {
+    const sel = document.getElementById('budget-filter-status');
+    if (sel) {
+        sel.value = val;
+        renderBudgetCards(allBudgetData);
+    }
+}
+window.setBudgetFilter = setBudgetFilter;
 
 function renderBudgetCards(budgets) {
     const grid = document.getElementById('budget-grid');
@@ -911,20 +952,98 @@ function renderBudgetCards(budgets) {
 
     grid.querySelectorAll('.budget-card').forEach(c => c.remove());
 
-    if (filtered.length === 0) { emptyState.style.display = 'flex'; return; }
+    if (filtered.length === 0) {
+        emptyState.style.display = 'flex';
+        const emptyIcon = document.getElementById('budget-empty-icon');
+        const emptyTitle = document.getElementById('budget-empty-title');
+        const emptyDesc = document.getElementById('budget-empty-desc');
+        const emptyAction = document.getElementById('budget-empty-action');
+
+        if (budgets.length === 0) {
+            if (emptyIcon) {
+                emptyIcon.style.color = 'var(--text-dim)';
+                emptyIcon.style.borderColor = 'var(--border)';
+                emptyIcon.style.background = 'rgba(255, 255, 255, 0.04)';
+                emptyIcon.innerHTML = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>`;
+            }
+            if (emptyTitle) emptyTitle.textContent = 'No budgets yet';
+            if (emptyDesc) emptyDesc.textContent = 'Create your first budget above to start tracking spending against allocations.';
+            if (emptyAction) emptyAction.innerHTML = '';
+        } else if (statusFilter === 'warning') {
+            if (emptyIcon) {
+                emptyIcon.style.color = '#10b981';
+                emptyIcon.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                emptyIcon.style.background = 'rgba(16, 185, 129, 0.1)';
+                emptyIcon.innerHTML = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+            }
+            if (emptyTitle) emptyTitle.textContent = 'No budgets in warning status';
+            if (emptyDesc) emptyDesc.textContent = 'None of your active budgets are currently near their limit (75%–100% of allocation). All budgets are on track or already handled.';
+            if (emptyAction) emptyAction.innerHTML = `<button type="button" class="btn btn-secondary btn-sm" onclick="setBudgetFilter('')" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;">View All Budgets (${budgets.length})</button>`;
+        } else if (statusFilter === 'over-budget') {
+            if (emptyIcon) {
+                emptyIcon.style.color = '#10b981';
+                emptyIcon.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                emptyIcon.style.background = 'rgba(16, 185, 129, 0.1)';
+                emptyIcon.innerHTML = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+            }
+            if (emptyTitle) emptyTitle.textContent = 'No over-budget categories';
+            if (emptyDesc) emptyDesc.textContent = 'Excellent! None of your budgets have exceeded their allocated limits.';
+            if (emptyAction) emptyAction.innerHTML = `<button type="button" class="btn btn-secondary btn-sm" onclick="setBudgetFilter('')" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;">View All Budgets (${budgets.length})</button>`;
+        } else if (statusFilter === 'on-track') {
+            if (emptyIcon) {
+                emptyIcon.style.color = '#f59e0b';
+                emptyIcon.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                emptyIcon.style.background = 'rgba(245, 158, 11, 0.1)';
+                emptyIcon.innerHTML = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+            }
+            if (emptyTitle) emptyTitle.textContent = 'No budgets on track';
+            if (emptyDesc) emptyDesc.textContent = 'All your active budgets have spent more than 75% of their allocation.';
+            if (emptyAction) emptyAction.innerHTML = `<button type="button" class="btn btn-secondary btn-sm" onclick="setBudgetFilter('')" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;">View All Budgets (${budgets.length})</button>`;
+        } else {
+            if (emptyTitle) emptyTitle.textContent = 'No matching budgets';
+            if (emptyDesc) emptyDesc.textContent = 'No budgets match the selected filter.';
+            if (emptyAction) emptyAction.innerHTML = `<button type="button" class="btn btn-secondary btn-sm" onclick="setBudgetFilter('')" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;">Clear Filter</button>`;
+        }
+        return;
+    }
     emptyState.style.display = 'none';
 
     filtered.forEach(budget => {
         const pct = budget.budget_amount > 0 ? (budget.spent / budget.budget_amount) * 100 : 0;
         const remaining = budget.budget_amount - budget.spent;
         const capped = Math.min(pct, 100);
-        let statusClass, progressClass, pctClass;
-        if (pct > 100)      { statusClass = 'status-over-budget'; progressClass = 'progress-over-budget'; pctClass = 'percent-over-budget'; }
-        else if (pct > 75)  { statusClass = 'status-warning'; progressClass = 'progress-warning'; pctClass = 'percent-warning'; }
-        else                { statusClass = 'status-on-track'; progressClass = 'progress-on-track'; pctClass = 'percent-on-track'; }
+        let statusClass, progressClass, pctClass, cardModifier = '', badgeHtml = '';
+
+        if (pct > 100) {
+            statusClass = 'status-over-budget';
+            progressClass = 'progress-over-budget';
+            pctClass = 'percent-over-budget';
+            cardModifier = ' over-budget';
+            badgeHtml = `<span class="over-budget-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> OVER BUDGET</span>`;
+        } else if (pct > 75) {
+            statusClass = 'status-warning';
+            progressClass = 'progress-warning';
+            pctClass = 'percent-warning';
+            cardModifier = ' warning-budget';
+            badgeHtml = `<span class="warning-budget-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> NEAR LIMIT (${pct.toFixed(0)}%)</span>`;
+        } else {
+            statusClass = 'status-on-track';
+            progressClass = 'progress-on-track';
+            pctClass = 'percent-on-track';
+            badgeHtml = `<span class="on-track-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ON TRACK</span>`;
+        }
+
+        let remainingHtml = '';
+        if (remaining < 0) {
+            remainingHtml = `<span class="remaining-negative">Exceeded by ₹${formatNumber(Math.abs(remaining))}</span>`;
+        } else if (pct > 75) {
+            remainingHtml = `<span class="remaining-warning">₹${formatNumber(remaining)} remaining (${(100 - pct).toFixed(0)}% left)</span>`;
+        } else {
+            remainingHtml = `<span class="remaining-positive">₹${formatNumber(remaining)}</span> remaining`;
+        }
 
         const card = document.createElement('div');
-        card.className = `budget-card${pct > 100 ? ' over-budget' : ''}`;
+        card.className = `budget-card${cardModifier}`;
         card.innerHTML = `
             <div class="budget-card-status-bar ${statusClass}"></div>
             <div class="budget-card-header">
@@ -933,7 +1052,7 @@ function renderBudgetCards(budgets) {
                     <div class="budget-card-period">${formatPeriodExplicit(budget.period_type, budget.period_value)}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:0.4rem;">
-                    ${pct > 100 ? '<span class="over-budget-badge">OVER</span>' : ''}
+                    ${badgeHtml}
                     <div class="budget-card-actions">
                         <button class="action-btn edit-btn" onclick="openEditBudget(${budget.bud_id})" title="Edit">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -955,9 +1074,7 @@ function renderBudgetCards(budgets) {
             </div>
             <div class="budget-card-footer">
                 <div class="budget-remaining">
-                    ${remaining >= 0
-                        ? `<span class="remaining-positive">₹${formatNumber(remaining)}</span> remaining`
-                        : `<span class="remaining-negative">₹${formatNumber(Math.abs(remaining))}</span> over limit`}
+                    ${remainingHtml}
                 </div>
             </div>`;
 
