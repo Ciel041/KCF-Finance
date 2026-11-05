@@ -76,15 +76,18 @@ export default async function handler(req, res) {
                 if (!src) return res.status(403).json({ error: 'Income source not found for your organisation.' });
             }
 
+            // Fetch source name to satisfy NOT NULL constraint on Source column
+            const srcRow = resolvedSrcId
+                ? db.prepare('SELECT src_name FROM income_sources WHERE src_id = ?').get(resolvedSrcId)
+                : null;
+            const srcName = srcRow ? srcRow.src_name : (source_name || '').trim();
+
             const result = db.prepare(`
-                INSERT INTO income (org_id, src_id, amount, income_date, description, createdAt)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `).run(orgId, resolvedSrcId, parseFloat(amount), income_date, (description || '').trim(), now);
+                INSERT INTO income (org_id, src_id, Source, amount, income_date, description, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).run(orgId, resolvedSrcId, srcName, parseFloat(amount), income_date, (description || '').trim(), now);
 
             const income_id = Number(result.lastInsertRowid);
-            const srcName = resolvedSrcId
-                ? (db.prepare(`SELECT src_name FROM income_sources WHERE src_id = ?`).get(resolvedSrcId) || {}).src_name || ''
-                : (source_name || '');
 
             return res.status(200).json({
                 id: income_id,
@@ -122,13 +125,19 @@ export default async function handler(req, res) {
                 resolvedSrcId = src ? src.src_id : null;
             }
 
+            const srcRow = resolvedSrcId
+                ? db.prepare('SELECT src_name FROM income_sources WHERE src_id = ?').get(resolvedSrcId)
+                : null;
+            const srcName = srcRow ? srcRow.src_name : (source_name ? source_name.trim() : null);
+
             const now = new Date().toISOString();
             db.prepare(`
                 UPDATE income
                 SET src_id = COALESCE(?, src_id),
+                    Source = COALESCE(?, Source),
                     amount = ?, income_date = ?, description = ?, updatedAt = ?
                 WHERE income_id = ? AND org_id = ?
-            `).run(resolvedSrcId, parseFloat(amount), income_date, (description || '').trim(), now, numId, orgId);
+            `).run(resolvedSrcId, srcName, parseFloat(amount), income_date, (description || '').trim(), now, numId, orgId);
 
             return res.status(200).json({ message: 'Updated successfully' });
         }
